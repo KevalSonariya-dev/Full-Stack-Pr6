@@ -1,0 +1,31 @@
+.error-box{
+
+    background:#ffe6e6;
+
+    padding:30px;
+
+    border-radius:10px;
+
+    text-align:center;
+
+    margin-top:50px;
+
+}
+
+.error-box button{
+
+    margin-top:20px;
+
+    padding:10px 20px;
+
+    background:#3498db;
+
+    color:white;
+
+    border:none;
+
+    border-radius:6px;
+
+    cursor:pointer;
+
+}

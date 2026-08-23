@@ -1,0 +1,150 @@
+.contact-page{
+    padding:50px 20px;
+}
+
+.contact-card{
+    max-width:1100px;
+    margin:auto;
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:40px;
+    background:white;
+    border-radius:15px;
+    overflow:hidden;
+    box-shadow:0 10px 25px rgba(0,0,0,.1);
+}
+
+.contact-left{
+    background:linear-gradient(135deg,#3498db,#6dd5fa);
+    color:white;
+    padding:40px;
+}
+
+.contact-left h1{
+    font-size:40px;
+    margin-bottom:20px;
+}
+
+.contact-left p{
+    line-height:1.8;
+}
+
+.contact-info{
+    margin-top:35px;
+}
+
+.contact-info h3{
+    margin-top:20px;
+}
+
+.toggle-btn{
+    margin-top:35px;
+    padding:12px 25px;
+    background:white;
+    color:#3498db;
+    border:none;
+    border-radius:30px;
+    cursor:pointer;
+    font-size:16px;
+    transition:.3s;
+}
+
+.toggle-btn:hover{
+    transform:scale(1.05);
+}
+
+.extra-info{
+    margin-top:20px;
+    background:rgba(255,255,255,.2);
+    padding:20px;
+    border-radius:10px;
+}
+
+.contact-right{
+    padding:40px;
+}
+
+.contact-right h2{
+    color:#3498db;
+    margin-bottom:25px;
+}
+
+.contact-right form{
+    display:flex;
+    flex-direction:column;
+}
+
+.contact-right input,
+.contact-right textarea{
+    margin-bottom:18px;
+    padding:15px;
+    border:2px solid #ddd;
+    border-radius:8px;
+    font-size:16px;
+    outline:none;
+    transition:.3s;
+}
+
+.contact-right input:focus,
+.contact-right textarea:focus{
+    border-color:#3498db;
+    box-shadow:0 0 8px rgba(52,152,219,.3);
+}
+
+.counter{
+    color:#777;
+    margin-bottom:20px;
+}
+
+.submit-btn{
+    background:#3498db;
+    color:white;
+    border:none;
+    padding:15px;
+    border-radius:8px;
+    font-size:17px;
+    cursor:pointer;
+    transition:.3s;
+}
+
+.submit-btn:hover{
+    background:#217dbb;
+    transform:translateY(-2px);
+}
+
+/* Dark Mode */
+
+.dark .contact-card{
+    background:#1f2937;
+}
+
+.dark .contact-right h2,
+.dark .counter{
+    color:white;
+}
+
+.dark .contact-right input,
+.dark .contact-right textarea{
+    background:#374151;
+    color:white;
+    border:2px solid #555;
+}
+
+/* Mobile */
+
+@media(max-width:900px){
+
+.contact-card{
+grid-template-columns:1fr;
+}
+
+.contact-left,
+.contact-right{
+padding:30px;
+}
+
+.contact-left h1{
+font-size:32px;
+}
+
+}

@@ -1,0 +1,41 @@
+.about{
+
+    margin-top:60px;
+
+    background:white;
+
+    padding:40px;
+
+    border-radius:15px;
+
+    box-shadow:0 5px 15px rgba(0,0,0,.1);
+
+}
+
+.about h2{
+
+    color:#3498db;
+
+    margin-bottom:20px;
+
+    text-align:center;
+
+}
+
+.about p{
+
+    font-size:18px;
+
+    line-height:1.8;
+
+    text-align:center;
+
+}
+
+.dark .about{
+
+background:#1f2937;
+
+color:white;
+
+}
