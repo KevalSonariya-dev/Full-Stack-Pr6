@@ -36,10 +36,6 @@ function Projects() {
   const [editDescription, setEditDescription] = useState("");
   const [editPriority, setEditPriority] = useState("medium");
 
-  useEffect(() => {
-    loadTasks();
-  }, []);
-
   const loadTasks = async () => {
     try {
       setLoading(true);
@@ -54,6 +50,11 @@ function Projects() {
       setLoading(false);
     }
   };
+
+  useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect
+    loadTasks();
+  }, []);
 
   const summary = useMemo(() => {
     const total = tasks.length;
