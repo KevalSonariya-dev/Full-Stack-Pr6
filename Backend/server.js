@@ -3,6 +3,11 @@ const mongoose = require("mongoose");
 const dotenv = require("dotenv");
 const cors = require("cors");
 const Task = require("./models/Task");
+const User = require("./models/User");
+const bcrypt = require("bcryptjs");
+const jwt = require("jsonwebtoken");
+const authMiddleware = require("./middleware/authMiddleware");
+const { validateTask, validateAuth } = require("./middleware/validationMiddleware");
 
 dotenv.config();
 
@@ -23,7 +28,7 @@ app.use((req, res, next) => {
 // GET ALL TASKS
 // ==========================================
 
-app.get("/tasks", async (req, res, next) => {
+app.get("/tasks", authMiddleware, async (req, res, next) => {
 
     try {
 
@@ -45,7 +50,7 @@ app.get("/tasks", async (req, res, next) => {
 // GET SINGLE TASK
 // ==========================================
 
-app.get("/tasks/:id", async (req, res, next) => {
+app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
 
@@ -75,7 +80,7 @@ app.get("/tasks/:id", async (req, res, next) => {
 // CREATE TASK
 // ==========================================
 
-app.post("/tasks", async (req, res, next) => {
+app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
 
     try {
 
@@ -106,7 +111,7 @@ app.post("/tasks", async (req, res, next) => {
 // UPDATE TASK
 // ==========================================
 
-app.put("/tasks/:id", async (req, res, next) => {
+app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
 
@@ -161,7 +166,7 @@ app.put("/tasks/:id", async (req, res, next) => {
 // DELETE TASK
 // ==========================================
 
-app.delete("/tasks/:id", async (req, res, next) => {
+app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
 
@@ -196,6 +201,140 @@ app.delete("/tasks/:id", async (req, res, next) => {
 
 
 // ==========================================
+// REGISTER USER
+// ==========================================
+
+app.post("/register", validateAuth, async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        // Validate required fields
+        if (!email || !password) {
+            return res.status(400).json({
+                error: "Validation Error",
+                message: "Email and password are required"
+            });
+        }
+
+        // Check whether user already exists
+        const normalizedEmail = email.toLowerCase().trim();
+        const existingUser = await User.findOne({ email: normalizedEmail });
+        if (existingUser) {
+            return res.status(400).json({
+                error: "Duplicate Email",
+                message: "A user with this email is already registered"
+            });
+        }
+
+        // Hash password using bcryptjs with salt factor 10
+        const hashedPassword = await bcrypt.hash(password, 10);
+
+        // Create User
+        const user = await User.create({
+            email: normalizedEmail,
+            password: hashedPassword
+        });
+
+        // Return success response without exposing password
+        res.status(201).json({
+            message: "User registered successfully",
+            user: {
+                id: user._id,
+                email: user.email
+            }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+// ==========================================
+// LOGIN USER
+// ==========================================
+
+app.post("/login", validateAuth, async (req, res, next) => {
+    try {
+        const { email, password } = req.body;
+
+        // Validate required fields
+        if (!email || !password) {
+            return res.status(400).json({
+                error: "Validation Error",
+                message: "Email and password are required"
+            });
+        }
+
+        // Find user by email
+        const normalizedEmail = email.toLowerCase().trim();
+        const user = await User.findOne({ email: normalizedEmail });
+        if (!user) {
+            return res.status(401).json({
+                error: "Authentication Error",
+                message: "Invalid email or password"
+            });
+        }
+
+        // Verify password with bcrypt.compare()
+        const isMatch = await bcrypt.compare(password, user.password);
+        if (!isMatch) {
+            return res.status(401).json({
+                error: "Authentication Error",
+                message: "Invalid email or password"
+            });
+        }
+
+        // Generate JWT with user's ID in payload, expiring in 1 hour
+        const token = jwt.sign(
+            { id: user._id, userId: user._id },
+            process.env.JWT_SECRET,
+            { expiresIn: "1h" }
+        );
+
+        res.status(200).json({
+            message: "Login successful",
+            token,
+            user: {
+                id: user._id,
+                email: user.email
+            }
+        });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+// ==========================================
+// GET LOGGED-IN USER PROFILE (/me)
+// ==========================================
+
+app.get("/me", authMiddleware, async (req, res, next) => {
+    try {
+        const userId = req.user.id || req.user.userId;
+        const user = await User.findById(userId).select("-password");
+
+        if (!user) {
+            return res.status(404).json({
+                error: "Not Found",
+                message: "User not found"
+            });
+        }
+
+        res.status(200).json({
+            id: user._id,
+            email: user.email
+        });
+
+    } catch (err) {
+        next(err);
+    }
+});
+
+
+// ==========================================
 // GLOBAL ERROR HANDLER
 // ==========================================
 
@@ -203,6 +342,21 @@ app.use((err, req, res, next) => {
 
     console.error(err.message);
 
+    // Malformed JSON syntax error from express.json()
+    if (err instanceof SyntaxError && err.status === 400 && "body" in err) {
+        return res.status(400).json({
+            error: "Validation Error",
+            message: "Malformed JSON payload provided in request"
+        });
+    }
+
+    // Duplicate key error (e.g. unique email)
+    if (err.code === 11000) {
+        return res.status(400).json({
+            error: "Duplicate Field",
+            message: "A record with this unique value already exists"
+        });
+    }
 
     // Mongoose validation error
     if (err.name === "ValidationError") {
