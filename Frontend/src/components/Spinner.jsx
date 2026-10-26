@@ -1,10 +1,10 @@
 import "./Spinner.css";
 
-function Spinner() {
+function Spinner({ message = "Loading page..." }) {
   return (
     <div className="spinner-container">
       <div className="spinner"></div>
-      <p>Loading Repositories...</p>
+      <p>{message}</p>
     </div>
   );
 }
