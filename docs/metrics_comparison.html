@@ -1,0 +1,367 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practical 8 Performance Comparison Dashboard</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      padding: 32px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+    }
+    header {
+      border-bottom: 1px solid #334155;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title-group h1 {
+      font-size: 24px;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+    .title-group p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .badge {
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+    .kpi-card.blue::before { background: #38bdf8; }
+    .kpi-card.emerald::before { background: #34d399; }
+    .kpi-card.purple::before { background: #c084fc; }
+    .kpi-card.amber::before { background: #fbbf24; }
+
+    .kpi-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 8px 0 4px;
+    }
+    .kpi-sub {
+      font-size: 12px;
+      color: #34d399;
+      font-weight: 600;
+    }
+
+    /* Comparison Split */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .panel {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .panel-header .tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .tag.red { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .tag.green { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+    .terminal-body {
+      padding: 16px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      background: #0b1120;
+    }
+    .t-command { color: #38bdf8; }
+    .t-dim { color: #64748b; }
+    .t-highlight { color: #f59e0b; font-weight: bold; }
+    .t-success { color: #34d399; font-weight: bold; }
+    .t-chunk { color: #a78bfa; }
+
+    /* Chunks Table */
+    .table-container {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-title {
+      padding: 14px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-weight: 600;
+      font-size: 14px;
+      color: #f1f5f9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 10px 18px;
+      text-align: left;
+    }
+    th {
+      background: #0f172a;
+      color: #94a3b8;
+      font-weight: 600;
+      border-bottom: 1px solid #334155;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:not(:last-child) td {
+      border-bottom: 1px solid #1e293b;
+    }
+    .chunk-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-family: monospace;
+      font-size: 11px;
+      background: rgba(167, 139, 250, 0.15);
+      color: #c084fc;
+      border: 1px solid rgba(167, 139, 250, 0.3);
+    }
+    .route-badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      background: rgba(56, 189, 248, 0.15);
+      color: #38bdf8;
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>Practical 8: Performance Optimization — Metrics Comparison</h1>
+        <p>Advanced Web Development Frameworks (ITUE301) • Route Code-Splitting with React.lazy() & Suspense</p>
+      </div>
+      <div class="badge">Vite Build Analysis</div>
+    </header>
+
+    <!-- Key Metrics -->
+    <div class="kpi-grid">
+      <div class="kpi-card blue">
+        <div class="kpi-label">Initial JS Bundle</div>
+        <div class="kpi-value">242.1 kB</div>
+        <div class="kpi-sub">↓ -23.86 kB (-9.0%) vs Baseline</div>
+      </div>
+      <div class="kpi-card emerald">
+        <div class="kpi-label">Initial CSS Bundle</div>
+        <div class="kpi-value">4.83 kB</div>
+        <div class="kpi-sub">↓ -11.05 kB (-69.6%) vs Baseline</div>
+      </div>
+      <div class="kpi-card purple">
+        <div class="kpi-label">Generated Route Chunks</div>
+        <div class="kpi-value">6 Chunks</div>
+        <div class="kpi-sub">↑ Loaded strictly on-demand</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Suspense Fallback UI</div>
+        <div class="kpi-value">Active</div>
+        <div class="kpi-sub">Zero-flash spinner feedback</div>
+      </div>
+    </div>
+
+    <!-- Terminals Side-by-Side -->
+    <div class="comparison-grid">
+      <!-- BEFORE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>BEFORE: Single Monolithic Bundle</span>
+          <span class="tag red">Static Imports</span>
+        </div>
+        <div class="terminal-body">
+<span class="t-command">$ npm run build</span>
+<span class="t-dim">> vite build</span>
+
+vite v8.1.4 building client environment...
+<span class="t-success">✓ 50 modules transformed.</span>
+computing gzip size...
+
+dist/index.html                   0.46 kB │ gzip:  0.30 kB
+dist/assets/index-Dol6pY0P.css   15.88 kB │ gzip:  3.91 kB
+<span class="t-highlight">dist/assets/index-BlhMWSeh.js   265.99 kB │ gzip: 83.94 kB</span>
+
+<span class="t-success">✓ built in 313ms</span>
+<span class="t-dim">------------------------------------------</span>
+<span class="t-dim">Notice: ALL 6 routes bundled into single 266 kB file upfront.</span>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>AFTER: Route-Based Code Splitting</span>
+          <span class="tag green">React.lazy() + Suspense</span>
+        </div>
+        <div class="terminal-body">
+<span class="t-command">$ npm run build</span>
+<span class="t-dim">> vite build</span>
+
+vite v8.1.4 building client environment...
+<span class="t-success">✓ 52 modules transformed.</span>
+computing gzip size...
+
+dist/index.html                      0.54 kB │ gzip:  0.33 kB
+dist/assets/index-qVkBHAZE.css       4.83 kB │ gzip:  1.60 kB
+<span class="t-success">dist/assets/index-LV5PIrVC.js      242.13 kB │ gzip: 78.12 kB</span>
+<span class="t-chunk">dist/assets/Projects-CNstzKvu.js     9.96 kB │ gzip:  2.53 kB</span>
+<span class="t-chunk">dist/assets/Home-CR_FR5Fd.js         2.49 kB │ gzip:  0.90 kB</span>
+<span class="t-chunk">dist/assets/Register-bzEcl5wx.js     1.66 kB │ gzip:  0.73 kB</span>
+<span class="t-chunk">dist/assets/Login-BidTzHpX.js        1.63 kB │ gzip:  0.73 kB</span>
+<span class="t-chunk">dist/assets/Contact-BDZO8U8K.js      1.62 kB │ gzip:  0.71 kB</span>
+<span class="t-chunk">dist/assets/NotFound-3x4xJZiB.js     0.24 kB │ gzip:  0.19 kB</span>
+
+<span class="t-success">✓ built in 646ms</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Chunks Breakdown Table -->
+    <div class="table-container">
+      <div class="table-title">On-Demand Route Chunks Breakdown</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Generated Chunk File</th>
+            <th>Target Route</th>
+            <th>Raw Size</th>
+            <th>Gzip Size</th>
+            <th>Loading Trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><span class="chunk-badge">index-LV5PIrVC.js</span></td>
+            <td><span class="route-badge">Core App Entry</span></td>
+            <td><strong>242.13 kB</strong></td>
+            <td>78.12 kB</td>
+            <td>Initial page load (All visits)</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">Projects-CNstzKvu.js</span></td>
+            <td><span class="route-badge">/projects</span></td>
+            <td><strong>9.96 kB</strong></td>
+            <td>2.53 kB</td>
+            <td>When user navigates to Projects</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">Home-CR_FR5Fd.js</span></td>
+            <td><span class="route-badge">/</span></td>
+            <td><strong>2.49 kB</strong></td>
+            <td>0.90 kB</td>
+            <td>When user visits Home</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">Register-bzEcl5wx.js</span></td>
+            <td><span class="route-badge">/register</span></td>
+            <td><strong>1.66 kB</strong></td>
+            <td>0.73 kB</td>
+            <td>When user visits Register</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">Login-BidTzHpX.js</span></td>
+            <td><span class="route-badge">/login</span></td>
+            <td><strong>1.63 kB</strong></td>
+            <td>0.73 kB</td>
+            <td>When user visits Login</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">Contact-BDZO8U8K.js</span></td>
+            <td><span class="route-badge">/contact</span></td>
+            <td><strong>1.62 kB</strong></td>
+            <td>0.71 kB</td>
+            <td>When user visits Contact</td>
+          </tr>
+          <tr>
+            <td><span class="chunk-badge">NotFound-3x4xJZiB.js</span></td>
+            <td><span class="route-badge">* (404)</span></td>
+            <td><strong>0.24 kB</strong></td>
+            <td>0.19 kB</td>
+            <td>When unmatched route visited</td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

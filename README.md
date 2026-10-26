@@ -79,6 +79,8 @@ const NotFound = lazy(() => import("./pages/NotFound"));
 
 Both measurements were captured using Vite's production build command (`npm run build`).
 
+![Metrics Comparison Dashboard](docs/screenshots/metrics_comparison.png)
+
 ### Comparative Metrics Table
 
 | Metric / Asset | Before Optimization (Single Bundle) | After Optimization (Lazy Loaded) | Impact / Difference |
