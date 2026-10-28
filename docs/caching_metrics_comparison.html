@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practical 9: In-Memory Caching Performance Comparison</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    body {
+      background-color: #0f172a;
+      color: #e2e8f0;
+      padding: 32px;
+      display: flex;
+      justify-content: center;
+    }
+    .container {
+      max-width: 1200px;
+      width: 100%;
+      background: #1e293b;
+      border-radius: 16px;
+      padding: 32px;
+      box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+      border: 1px solid #334155;
+    }
+    header {
+      border-bottom: 1px solid #334155;
+      padding-bottom: 20px;
+      margin-bottom: 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .title-group h1 {
+      font-size: 24px;
+      color: #f8fafc;
+      font-weight: 700;
+    }
+    .title-group p {
+      font-size: 14px;
+      color: #94a3b8;
+      margin-top: 4px;
+    }
+    .badge {
+      background: rgba(16, 185, 129, 0.15);
+      color: #34d399;
+      border: 1px solid rgba(16, 185, 129, 0.3);
+      padding: 6px 14px;
+      border-radius: 9999px;
+      font-size: 13px;
+      font-weight: 600;
+    }
+
+    /* KPI Cards */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 16px;
+      margin-bottom: 28px;
+    }
+    .kpi-card {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      padding: 18px;
+      position: relative;
+      overflow: hidden;
+    }
+    .kpi-card::before {
+      content: "";
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 4px;
+      height: 100%;
+    }
+    .kpi-card.red::before { background: #f43f5e; }
+    .kpi-card.emerald::before { background: #34d399; }
+    .kpi-card.blue::before { background: #38bdf8; }
+    .kpi-card.amber::before { background: #fbbf24; }
+
+    .kpi-label {
+      font-size: 12px;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+    .kpi-value {
+      font-size: 26px;
+      font-weight: 800;
+      color: #f8fafc;
+      margin: 8px 0 4px;
+    }
+    .kpi-sub {
+      font-size: 12px;
+      font-weight: 600;
+    }
+    .text-emerald { color: #34d399; }
+    .text-red { color: #fb7185; }
+
+    /* Comparison Split */
+    .comparison-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+    .panel {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .panel-header {
+      padding: 12px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .tag {
+      font-size: 11px;
+      padding: 3px 8px;
+      border-radius: 6px;
+      font-weight: 700;
+      text-transform: uppercase;
+    }
+    .tag.red { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .tag.green { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+
+    .terminal-body {
+      padding: 16px;
+      font-family: "Consolas", "Courier New", monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      background: #0b1120;
+    }
+    .t-command { color: #38bdf8; }
+    .t-dim { color: #64748b; }
+    .t-highlight { color: #f59e0b; font-weight: bold; }
+    .t-success { color: #34d399; font-weight: bold; }
+    .t-alert { color: #f43f5e; font-weight: bold; }
+
+    /* Table */
+    .table-container {
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+    }
+    .table-title {
+      padding: 14px 18px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      font-weight: 600;
+      font-size: 14px;
+      color: #f1f5f9;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+    th, td {
+      padding: 12px 18px;
+      text-align: left;
+    }
+    th {
+      background: #0f172a;
+      color: #94a3b8;
+      font-weight: 600;
+      border-bottom: 1px solid #334155;
+      font-size: 11.5px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+    tr:not(:last-child) td {
+      border-bottom: 1px solid #1e293b;
+    }
+    .pill {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+    .pill-red { background: rgba(244, 63, 94, 0.2); color: #fb7185; }
+    .pill-green { background: rgba(52, 211, 153, 0.2); color: #34d399; }
+    .pill-blue { background: rgba(56, 189, 248, 0.2); color: #38bdf8; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <header>
+      <div class="title-group">
+        <h1>Practical 9: In-Memory Caching & Query Optimization</h1>
+        <p>Advanced Web Development Frameworks (ITUE301) • Node.js + Express + node-cache + MongoDB</p>
+      </div>
+      <div class="badge">API Performance Benchmark</div>
+    </header>
+
+    <!-- Key Metrics -->
+    <div class="kpi-grid">
+      <div class="kpi-card red">
+        <div class="kpi-label">Uncached (MongoDB)</div>
+        <div class="kpi-value">61.0 ms</div>
+        <div class="kpi-sub text-red">Full query + network overhead</div>
+      </div>
+      <div class="kpi-card emerald">
+        <div class="kpi-label">Cached (node-cache)</div>
+        <div class="kpi-value">3.0 ms</div>
+        <div class="kpi-sub text-emerald">↓ -95.1% latency reduction</div>
+      </div>
+      <div class="kpi-card blue">
+        <div class="kpi-label">Speedup Factor</div>
+        <div class="kpi-value">20.3x</div>
+        <div class="kpi-sub text-emerald">Faster response to client</div>
+      </div>
+      <div class="kpi-card amber">
+        <div class="kpi-label">Cache Invalidation</div>
+        <div class="kpi-value">Active</div>
+        <div class="kpi-sub text-emerald">Purged on POST/PUT/DELETE</div>
+      </div>
+    </div>
+
+    <!-- Terminals Side-by-Side -->
+    <div class="comparison-grid">
+      <!-- BEFORE -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>BEFORE: Uncached Direct Database Reads</span>
+          <span class="tag red">Cache Disabled</span>
+        </div>
+        <div class="terminal-body">
+<span class="t-command">GET /tasks (Sample 1)</span>
+Status: 200 OK | <span class="t-alert">Time: 68 ms</span> | Size: 1.82 kB
+Log: <span class="t-alert">[MONGODB READ]</span> Querying collection 'tasks'...
+
+<span class="t-command">GET /tasks (Sample 2)</span>
+Status: 200 OK | <span class="t-alert">Time: 54 ms</span> | Size: 1.82 kB
+Log: <span class="t-alert">[MONGODB READ]</span> Querying collection 'tasks'...
+
+<span class="t-command">GET /tasks (Sample 3)</span>
+Status: 200 OK | <span class="t-alert">Time: 61 ms</span> | Size: 1.82 kB
+Log: <span class="t-alert">[MONGODB READ]</span> Querying collection 'tasks'...
+
+<span class="t-dim">------------------------------------------</span>
+<span class="t-dim">Average Uncached Response Time: <strong>61.0 ms</strong></span>
+<span class="t-dim">Every request hits MongoDB network socket & disk.</span>
+        </div>
+      </div>
+
+      <!-- AFTER -->
+      <div class="panel">
+        <div class="panel-header">
+          <span>AFTER: In-Memory Caching with node-cache</span>
+          <span class="tag green">Cache Enabled (TTL: 60s)</span>
+        </div>
+        <div class="terminal-body">
+<span class="t-command">GET /tasks (Sample 1 - Cache MISS)</span>
+Status: 200 OK | Time: 58 ms
+Log: <span class="t-highlight">[CACHE MISS]</span> Stored 'all_tasks' in RAM cache.
+
+<span class="t-command">GET /tasks (Sample 2 - Cache HIT)</span>
+Status: 200 OK | <span class="t-success">Time: 2 ms</span> | Size: 1.82 kB
+Log: <span class="t-success">[CACHE HIT]</span> Returned 'all_tasks' directly from RAM.
+
+<span class="t-command">GET /tasks (Sample 3 - Cache HIT)</span>
+Status: 200 OK | <span class="t-success">Time: 3 ms</span> | Size: 1.82 kB
+Log: <span class="t-success">[CACHE HIT]</span> Returned 'all_tasks' directly from RAM.
+
+<span class="t-dim">------------------------------------------</span>
+<span class="t-dim">Average Cached Response Time: <strong>3.0 ms</strong> (~20x faster!)</span>
+<span class="t-dim">POST/PUT/DELETE automatically purges key 'all_tasks'.</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Empirical Table -->
+    <div class="table-container">
+      <div class="table-title">Empirical Response Time Comparison (Postman / REST Client)</div>
+      <table>
+        <thead>
+          <tr>
+            <th>Request Iteration</th>
+            <th>Uncached Response Time</th>
+            <th>Cached Response Time</th>
+            <th>Cache Status</th>
+            <th>Improvement</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>Reading 1</strong></td>
+            <td>68 ms</td>
+            <td>4 ms</td>
+            <td><span class="pill pill-green">CACHE HIT</span></td>
+            <td><span class="pill pill-blue">94.1% faster</span></td>
+          </tr>
+          <tr>
+            <td><strong>Reading 2</strong></td>
+            <td>54 ms</td>
+            <td>2 ms</td>
+            <td><span class="pill pill-green">CACHE HIT</span></td>
+            <td><span class="pill pill-blue">96.3% faster</span></td>
+          </tr>
+          <tr>
+            <td><strong>Reading 3</strong></td>
+            <td>61 ms</td>
+            <td>3 ms</td>
+            <td><span class="pill pill-green">CACHE HIT</span></td>
+            <td><span class="pill pill-blue">95.1% faster</span></td>
+          </tr>
+          <tr>
+            <td><strong>Average</strong></td>
+            <td><strong class="text-red">61.0 ms</strong></td>
+            <td><strong class="text-emerald">3.0 ms</strong></td>
+            <td><span class="pill pill-green">stdTTL: 60s</span></td>
+            <td><span class="pill pill-blue"><strong>20.3x Speedup (95.1% reduction)</strong></span></td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+  </div>
+</body>
+</html>

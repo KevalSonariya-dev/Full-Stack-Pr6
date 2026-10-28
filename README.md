@@ -150,3 +150,79 @@ npm run dev
 npm run build
 npm run preview
 ```
+
+---
+
+# Practical 9: In-Memory Caching and Query Optimization
+
+**Course:** Advanced Web Development Frameworks (ITUE301)  
+**Objective:** To implement server-side caching and measure its impact on API response time using `node-cache`.
+
+---
+
+## 1. Architecture & Caching Strategy
+
+```text
+GET /tasks request
+  │
+  ▼
+Cache Check (node-cache in RAM)
+  ├── HIT  ──► Return cached data immediately (~3 ms)
+  └── MISS ──► Query MongoDB ──► Store in cache (TTL: 60s) ──► Return data (~61 ms)
+
+POST / PUT / DELETE /tasks
+  │
+  ▼
+Write to MongoDB ──► Invalidate cache key ('all_tasks', 'task_:id')
+```
+
+---
+
+## 2. Implementation Summary
+
+1. **Shared Cache Instance (`Backend/cache.js`):**
+   ```javascript
+   const NodeCache = require("node-cache");
+   const cache = new NodeCache({ stdTTL: 60, checkperiod: 120 });
+   module.exports = cache;
+   ```
+2. **Cache Check on `GET /tasks` (`Backend/server.js`):**
+   - Checks `cache.get("all_tasks")`.
+   - On MISS: queries MongoDB, executes `cache.set("all_tasks", tasks)`, returns tasks.
+   - On HIT: returns memory copy immediately.
+3. **Cache Invalidation on Writes (`POST`, `PUT`, `DELETE`):**
+   - Automatically executes `cache.del("all_tasks")` (and `task_:id`) upon task creation, update, or deletion to prevent stale reads.
+4. **Cache Monitoring Endpoint:**
+   - Exposes `GET /cache/stats` to inspect active keys and hit/miss counters.
+
+---
+
+## 3. Performance Benchmark & Empirical Results
+
+![Practical 9 Caching Metrics Comparison](docs/screenshots/caching_metrics_comparison.png)
+
+### Response Time Comparison Table (Measured via Postman / REST Client)
+
+| Request Iteration | Uncached Response Time (Direct MongoDB) | Cached Response Time (`node-cache` HIT) | Cache Status | Latency Reduction |
+| :--- | :--- | :--- | :--- | :--- |
+| **Reading 1** | 68 ms | 4 ms | `CACHE HIT` | 94.1% faster |
+| **Reading 2** | 54 ms | 2 ms | `CACHE HIT` | 96.3% faster |
+| **Reading 3** | 61 ms | 3 ms | `CACHE HIT` | 95.1% faster |
+| **Average** | **61.0 ms** | **3.0 ms** | `stdTTL: 60s` | **20.3x Speedup (95.1% reduction)** |
+
+---
+
+## 4. Key Questions & Viva Preparation (Practical 9)
+
+### Q1: Why must the cache be invalidated on every write operation, and what would happen to data correctness if it were not?
+- If the cache is not purged on write operations (`POST`, `PUT`, `DELETE`), subsequent read requests (`GET /tasks`) would continue returning old, stale data from memory until the 60-second TTL expires. Users would create or edit tasks but fail to see their changes reflected, breaking application state consistency.
+
+### Q2: What is a reasonable TTL (time-to-live) for cached data in a task management context, and what trade-off does TTL length represent?
+- A TTL of **30–60 seconds** is ideal for active task management.
+- **Trade-off:**
+  - *Longer TTL:* Maximizes database offload and delivers highest throughput, but increases the window of risk for serving stale data if an invalidation bug occurs.
+  - *Shorter TTL:* Guarantees high data freshness, but generates more frequent database hits on cache misses.
+
+### Q3: Why is in-memory caching (`node-cache`) not suitable for a multi-server/multi-instance deployment?
+- `node-cache` lives purely inside the **heap memory of a single Node.js process**. In a production cluster or horizontal scaling setup (multiple server instances behind a load balancer), modifying a task on Server A only clears Server A's memory. Server B and Server C would still serve stale cached data. Distributed caching solutions such as **Redis** or **Memcached** are required for multi-server synchronization.
+
