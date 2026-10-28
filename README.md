@@ -210,6 +210,16 @@ Write to MongoDB ──► Invalidate cache key ('all_tasks', 'task_:id')
 | **Reading 3** | 61 ms | 3 ms | `CACHE HIT` | 95.1% faster |
 | **Average** | **61.0 ms** | **3.0 ms** | `stdTTL: 60s` | **20.3x Speedup (95.1% reduction)** |
 
+### Lab Evidence Screenshots
+
+| Evidence 1: Uncached Request (MongoDB Read - 68ms) | Evidence 2: Cached Request (RAM HIT - 2ms) |
+| :---: | :---: |
+| ![Uncached Request](docs/screenshots/postman_uncached_request.png) | ![Cached Request](docs/screenshots/postman_cached_request.png) |
+
+| Evidence 3: Cache Invalidation Lifecycle (POST) | Evidence 4: Cache Diagnostics (/cache/stats) |
+| :---: | :---: |
+| ![Cache Invalidation](docs/screenshots/cache_invalidation_test.png) | ![Cache Stats](docs/screenshots/cache_stats_debug.png) |
+
 ---
 
 ## 4. Key Questions & Viva Preparation (Practical 9)
