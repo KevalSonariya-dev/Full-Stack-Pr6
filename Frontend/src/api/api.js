@@ -112,3 +112,19 @@ export const deleteTask = async (id) => {
 
     return handleResponse(response);
 };
+
+
+// ==========================================
+// AI TASK ASSISTANT (Practical 13)
+// ==========================================
+export const generateAiDescription = async (title) => {
+    const response = await fetch(`${BASE_URL}/api/ai/generate-description`, {
+        method: "POST",
+        headers: authHeaders({
+            "Content-Type": "application/json"
+        }),
+        body: JSON.stringify({ title })
+    });
+
+    return handleResponse(response);
+};

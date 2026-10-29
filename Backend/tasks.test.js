@@ -31,4 +31,14 @@ describe("Task Management API - CI/CD Automated Tests", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body.status).toBe("OK");
   });
+
+  // Test 3: Practical 13 AI description generation with graceful degradation
+  test("POST /api/ai/generate-description returns 200 with fallback or AI description", async () => {
+    const res = await request(app)
+      .post("/api/ai/generate-description")
+      .send({ title: "Setup CI/CD deployment" });
+    expect(res.statusCode).toBe(200);
+    expect(res.body).toHaveProperty("description");
+    expect(typeof res.body.description).toBe("string");
+  });
 });
