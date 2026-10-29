@@ -236,3 +236,101 @@ Write to MongoDB ──► Invalidate cache key ('all_tasks', 'task_:id')
 ### Q3: Why is in-memory caching (`node-cache`) not suitable for a multi-server/multi-instance deployment?
 - `node-cache` lives purely inside the **heap memory of a single Node.js process**. In a production cluster or horizontal scaling setup (multiple server instances behind a load balancer), modifying a task on Server A only clears Server A's memory. Server B and Server C would still serve stale cached data. Distributed caching solutions such as **Redis** or **Memcached** are required for multi-server synchronization.
 
+
+
+---
+
+# Practical 11: Containerization with Docker and Docker Compose
+
+**Course:** Advanced Web Development Frameworks (ITUE301)  
+**Student:** Keval Sonariya  
+**Repository:** Full-Stack Task Management Project  
+
+---
+
+## 1. Objective
+To containerize the full-stack application (React frontend, Node/Express backend, and MongoDB database) using Docker and orchestrate all services seamlessly using Docker Compose.
+
+---
+
+## 2. Architecture & Service Topology
+
+```text
+docker-compose.yml
+ ├── frontend (React / Vite, port 5173)
+ ├── backend  (Node / Express, port 5000)
+ └── mongodb  (Official MongoDB image, port 27017, volume: mongo-data)
+
+Network: app-network (bridge)
+Communication: frontend ──► backend ──► mongodb
+```
+
+### Services & Port Configuration
+| Service Name | Technology / Image | Host Port | Container Port | Purpose |
+| :--- | :--- | :--- | :--- | :--- |
+| **`frontend`** | Custom `Frontend/Dockerfile` (Node 18) | `5173` | `5173` | React application served via Vite preview |
+| **`backend`** | Custom `Backend/Dockerfile` (Node 18) | `5000` | `5000` | REST API with JWT Auth, Caching & Events |
+| **`mongodb`** | `mongo:latest` | `27017` | `27017` | Persistent NoSQL Database |
+
+---
+
+## 3. How to Run with a Single Command
+
+### Prerequisites
+- Docker Desktop (or Docker Engine) installed and running.
+
+### Start the Entire Stack
+Run from the project root:
+```bash
+docker-compose up --build
+```
+> To run in detached (background) mode:
+> ```bash
+> docker-compose up --build -d
+> ```
+
+### Access the Application
+- **Frontend App:** [http://localhost:5173](http://localhost:5173)
+- **Backend API:** [http://localhost:5000](http://localhost:5000)
+- **MongoDB Database:** `mongodb://localhost:27017`
+
+### Check Container Status
+```bash
+docker ps
+```
+
+### Stop the Stack
+```bash
+# Stops containers
+docker-compose down
+
+# Stops containers AND removes database volume (clean reset)
+docker-compose down -v
+```
+
+---
+
+## 4. Supplementary Features Implemented
+
+1. **`.dockerignore` Optimization:**
+   - Both `Backend/.dockerignore` and `Frontend/.dockerignore` exclude `node_modules`, `.env`, and git artifacts, keeping image sizes small and build times fast.
+2. **Named Volume for Data Persistence (`mongo-data`):**
+   - Mounted at `/data/db` inside MongoDB so all tasks, users, and collections persist even across container restarts and updates.
+3. **Multi-Stage Build for React Frontend:**
+   - Compiles static assets in the build stage and runs a production preview server on port `5173`.
+
+---
+
+## 5. Key Questions & Viva Preparation (Practical 11)
+
+### Q1: Why does the backend container need to reference MongoDB by service name (`mongodb`) rather than `localhost`?
+- Each container possesses its own private network namespace and isolated `localhost` (`127.0.0.1`). Connecting to `localhost:27017` from the backend looks inside the backend container itself.
+- Docker Compose automatically provides built-in DNS service discovery on the shared bridge network (`app-network`). Using `mongodb://mongodb:27017/task_manager` allows Docker to resolve `mongodb` directly to the database container's internal IP.
+
+### Q2: What is the difference between `EXPOSE` in a Dockerfile and the `ports` mapping in `docker-compose.yml`?
+- **`EXPOSE`:** Purely metadata documentation indicating which port the container application listens on internally. It does **not** publish or bind the port to the host machine.
+- **`ports` (`HOST:CONTAINER`):** Configures Docker host port forwarding (e.g., `"5173:5173"`), making the container service directly reachable from the host machine's browser or API clients.
+
+### Q3: Why is it bad practice to copy `node_modules` into a Docker image instead of running `npm install` inside?
+- **Platform Incompatibilities:** Native binary packages (like `bcryptjs` / native bindings) compiled on a Windows host will fail or crash inside a Linux-based container environment.
+- **Image Bloat:** Copying hundreds of megabytes of host `node_modules` degrades build cache efficiency and inflates context transfer times.
