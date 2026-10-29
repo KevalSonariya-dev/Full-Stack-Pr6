@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { useAuth } from "../context/AuthContext";
-import "./Navbar.css";
+import "./NavBar.css";
 import "../pages/Auth.css";
 
 function Navbar({ darkMode, setDarkMode }) {
