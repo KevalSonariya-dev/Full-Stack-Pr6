@@ -194,6 +194,9 @@ app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
         res.status(200).json(task);
 
+        // Emit background event (non-blocking notification & real-time sync)
+        taskEvents.emit("task-updated", task);
+
     } catch (err) {
 
         next(err);
@@ -248,6 +251,58 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
     }
 
 });
+
+// ==========================================
+// REAL-TIME SSE STREAM (Multi-Tab Synchronization)
+// ==========================================
+
+let sseClients = [];
+
+app.get("/tasks/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.setHeader("Access-Control-Allow-Origin", "*");
+    res.flushHeaders();
+
+    // Handshake ping
+    res.write(`data: ${JSON.stringify({ type: "CONNECTED" })}\n\n`);
+
+    sseClients.push(res);
+    console.log(`[SSE] Tab connected. Active connections: ${sseClients.length}`);
+
+    req.on("close", () => {
+        sseClients = sseClients.filter((client) => client !== res);
+        console.log(`[SSE] Tab disconnected. Active connections: ${sseClients.length}`);
+    });
+});
+
+const broadcastSSE = (type, data) => {
+    if (sseClients.length === 0) return;
+    const payload = `data: ${JSON.stringify({ type, data })}\n\n`;
+    sseClients.forEach((client) => {
+        try {
+            client.write(payload);
+        } catch (err) {
+            console.error("[SSE Broadcast Error]", err.message);
+        }
+    });
+};
+
+// Connect EventEmitter to SSE real-time broadcast
+taskEvents.on("task-created", (payload) => {
+    const task = payload.task || payload;
+    broadcastSSE("TASK_CREATED", task);
+});
+
+taskEvents.on("task-updated", (task) => {
+    broadcastSSE("TASK_UPDATED", task);
+});
+
+taskEvents.on("task-deleted", (task) => {
+    broadcastSSE("TASK_DELETED", task);
+});
+
 
 
 // ==========================================
