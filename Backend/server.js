@@ -9,6 +9,8 @@ const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middleware/authMiddleware");
 const { validateTask, validateAuth } = require("./middleware/validationMiddleware");
 const cache = require("./cache");
+const taskEvents = require("./events");
+require("./listeners");
 
 dotenv.config();
 
@@ -123,7 +125,14 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
         cache.del("all_tasks");
         console.log("[CACHE INVALIDATED] Key 'all_tasks' purged due to POST /tasks");
 
+        console.log(`[API] Response sent at ${new Date().toISOString()}`);
         res.status(201).json(task);
+
+        // Emit background event (non-blocking notification processing)
+        taskEvents.emit("task-created", {
+            task,
+            user: req.user?.email || "Authorized User"
+        });
 
     } catch (err) {
 
@@ -220,6 +229,7 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
         cache.del(`task_${req.params.id}`);
         console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to DELETE /tasks/${req.params.id}`);
 
+        console.log(`[API] Delete response sent at ${new Date().toISOString()}`);
         res.status(200).json({
 
             message: "Task Deleted Successfully",
@@ -227,6 +237,9 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
             deletedTask: task
 
         });
+
+        // Emit background event (non-blocking audit logging)
+        taskEvents.emit("task-deleted", task);
 
     } catch (err) {
 
