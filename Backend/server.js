@@ -9,6 +9,8 @@ const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middleware/authMiddleware");
 const { validateTask, validateAuth } = require("./middleware/validationMiddleware");
 const cache = require("./cache");
+const taskEvents = require("./events");
+require("./listeners");
 
 dotenv.config();
 
@@ -22,6 +24,57 @@ app.use(express.json());
 app.use((req, res, next) => {
     console.log(`${req.method} ${req.originalUrl}`);
     next();
+});
+
+
+// ==========================================
+// REAL-TIME SSE STREAM (Multi-Tab Synchronization)
+// ==========================================
+
+let sseClients = [];
+
+app.get("/tasks/stream", (req, res) => {
+    res.setHeader("Content-Type", "text/event-stream");
+    res.setHeader("Cache-Control", "no-cache");
+    res.setHeader("Connection", "keep-alive");
+    res.flushHeaders();
+
+    // Handshake ping
+    res.write(`data: ${JSON.stringify({ type: "CONNECTED" })}\n\n`);
+
+    sseClients.push(res);
+    console.log(`[SSE] Tab connected. Active connections: ${sseClients.length}`);
+
+    req.on("close", () => {
+        sseClients = sseClients.filter((client) => client !== res);
+        console.log(`[SSE] Tab disconnected. Active connections: ${sseClients.length}`);
+    });
+});
+
+const broadcastSSE = (type, data) => {
+    if (sseClients.length === 0) return;
+    const payload = `data: ${JSON.stringify({ type, data })}\n\n`;
+    sseClients.forEach((client) => {
+        try {
+            client.write(payload);
+        } catch (err) {
+            console.error("[SSE Broadcast Error]", err.message);
+        }
+    });
+};
+
+// Connect EventEmitter to SSE real-time broadcast
+taskEvents.on("task-created", (payload) => {
+    const task = payload.task || payload;
+    broadcastSSE("TASK_CREATED", task);
+});
+
+taskEvents.on("task-updated", (task) => {
+    broadcastSSE("TASK_UPDATED", task);
+});
+
+taskEvents.on("task-deleted", (task) => {
+    broadcastSSE("TASK_DELETED", task);
 });
 
 
@@ -123,7 +176,14 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
         cache.del("all_tasks");
         console.log("[CACHE INVALIDATED] Key 'all_tasks' purged due to POST /tasks");
 
+        console.log(`[API] Response sent at ${new Date().toISOString()}`);
         res.status(201).json(task);
+
+        // Emit background event (non-blocking notification processing)
+        taskEvents.emit("task-created", {
+            task,
+            user: req.user?.email || "Authorized User"
+        });
 
     } catch (err) {
 
@@ -185,6 +245,9 @@ app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
         res.status(200).json(task);
 
+        // Emit background event (non-blocking notification & real-time sync)
+        taskEvents.emit("task-updated", task);
+
     } catch (err) {
 
         next(err);
@@ -220,6 +283,7 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
         cache.del(`task_${req.params.id}`);
         console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to DELETE /tasks/${req.params.id}`);
 
+        console.log(`[API] Delete response sent at ${new Date().toISOString()}`);
         res.status(200).json({
 
             message: "Task Deleted Successfully",
@@ -227,6 +291,9 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
             deletedTask: task
 
         });
+
+        // Emit background event (non-blocking audit logging)
+        taskEvents.emit("task-deleted", task);
 
     } catch (err) {
 
