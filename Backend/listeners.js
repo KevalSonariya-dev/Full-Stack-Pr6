@@ -1,10 +1,4 @@
 const taskEvents = require('./events');
-
-/**
- * Event Listener: task-created
- * Demonstrates asynchronous background processing with an artificial delay.
- * Logs notification details (title, timestamp, assigned user) without blocking the API response.
- */
 taskEvents.on('task-created', (payload) => {
     // Artificial delay of 2 seconds (2000ms) to simulate slow external operations (email, SMS, audit logs)
     setTimeout(() => {
@@ -35,13 +29,8 @@ taskEvents.on('task-deleted', (payload) => {
     );
 });
 
-/**
- * Event Listener: error (Supplementary Problem 2)
- * Catches and logs errors to prevent unhandled 'error' events from crashing the Node.js process.
- */
 taskEvents.on('error', (err) => {
     console.error(`[Event Error] Error encountered in background listener:`, err.message);
 });
-
 console.log("[Events] Event listeners registered successfully.");
 
