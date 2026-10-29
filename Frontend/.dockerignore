@@ -1,0 +1,8 @@
+# Ignore local dependencies, build artifacts, and environment files
+node_modules
+dist
+npm-debug.log*
+.git
+.gitignore
+.env
+
