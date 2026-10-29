@@ -56,6 +56,67 @@ function Projects() {
     loadTasks();
   }, []);
 
+  // Dual-Sync: Browser BroadcastChannel (0ms local cross-tab) + Server-Sent Events (SSE from backend)
+  useEffect(() => {
+    const channel = typeof window !== "undefined" && "BroadcastChannel" in window
+      ? new BroadcastChannel("tasks_realtime_sync")
+      : null;
+
+    const handleIncomingSync = (type, data) => {
+      if (!data) return;
+      if (type === "TASK_CREATED") {
+        const newTask = data;
+        setTasks((prev) => {
+          if (prev.some((t) => t._id === newTask._id)) return prev;
+          return [newTask, ...prev];
+        });
+      } else if (type === "TASK_UPDATED") {
+        const updatedTask = data;
+        setTasks((prev) =>
+          prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
+        );
+      } else if (type === "TASK_DELETED") {
+        const deletedId = data._id || data;
+        setTasks((prev) => prev.filter((t) => t._id !== deletedId));
+      }
+    };
+
+    if (channel) {
+      channel.onmessage = (event) => {
+        const { type, data } = event.data || {};
+        console.log("[BroadcastChannel] Sync received:", type);
+        handleIncomingSync(type, data);
+      };
+    }
+
+    const eventSource = new EventSource("http://localhost:5000/tasks/stream");
+
+    eventSource.onopen = () => {
+      console.log("[SSE] Connected to real-time server stream");
+    };
+
+    eventSource.onmessage = (event) => {
+      try {
+        const payload = JSON.parse(event.data);
+        if (payload.type && payload.type !== "CONNECTED") {
+          console.log("[SSE] Sync received:", payload.type);
+          handleIncomingSync(payload.type, payload.data);
+        }
+      } catch (err) {
+        console.error("[SSE] Parse error:", err);
+      }
+    };
+
+    eventSource.onerror = () => {
+      // Automatic reconnect
+    };
+
+    return () => {
+      if (channel) channel.close();
+      eventSource.close();
+    };
+  }, []);
+
   const summary = useMemo(() => {
     const total = tasks.length;
     const completed = tasks.filter((task) => task.completed).length;
@@ -136,6 +197,11 @@ function Projects() {
       setDescription("");
       setPriority("medium");
       toast.success("Task created successfully");
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("tasks_realtime_sync");
+        bc.postMessage({ type: "TASK_CREATED", data: newTask });
+        bc.close();
+      }
     } catch (err) {
       setError(err.message);
       toast.error(err.message);
@@ -182,6 +248,11 @@ function Projects() {
       setEditDescription("");
       setEditPriority("medium");
       toast.success("Task updated successfully");
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("tasks_realtime_sync");
+        bc.postMessage({ type: "TASK_UPDATED", data: updatedTask });
+        bc.close();
+      }
     } catch (err) {
       setError(err.message);
       toast.error(err.message);
@@ -214,6 +285,11 @@ function Projects() {
       }
 
       toast.success("Task deleted successfully");
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel("tasks_realtime_sync");
+        bc.postMessage({ type: "TASK_DELETED", data: id });
+        bc.close();
+      }
     } catch (err) {
       setError(err.message);
       toast.error(err.message);
