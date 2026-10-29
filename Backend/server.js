@@ -8,6 +8,7 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const authMiddleware = require("./middleware/authMiddleware");
 const { validateTask, validateAuth } = require("./middleware/validationMiddleware");
+const cache = require("./cache");
 
 dotenv.config();
 
@@ -25,15 +26,27 @@ app.use((req, res, next) => {
 
 
 // ==========================================
-// GET ALL TASKS
+// GET ALL TASKS (Cached with node-cache)
 // ==========================================
 
 app.get("/tasks", authMiddleware, async (req, res, next) => {
 
     try {
 
+        const cacheKey = "all_tasks";
+        const cachedTasks = cache.get(cacheKey);
+
+        if (cachedTasks) {
+            console.log(`[CACHE HIT] Serving ${cacheKey} from in-memory cache`);
+            return res.status(200).json(cachedTasks);
+        }
+
+        console.log(`[CACHE MISS] Fetching ${cacheKey} from MongoDB...`);
         const tasks = await Task.find()
             .sort({ createdAt: -1 });
+
+        // Cache the result with default TTL (60s)
+        cache.set(cacheKey, tasks);
 
         res.status(200).json(tasks);
 
@@ -47,13 +60,22 @@ app.get("/tasks", authMiddleware, async (req, res, next) => {
 
 
 // ==========================================
-// GET SINGLE TASK
+// GET SINGLE TASK (Cached by task ID)
 // ==========================================
 
 app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
 
+        const cacheKey = `task_${req.params.id}`;
+        const cachedTask = cache.get(cacheKey);
+
+        if (cachedTask) {
+            console.log(`[CACHE HIT] Serving ${cacheKey} from in-memory cache`);
+            return res.status(200).json(cachedTask);
+        }
+
+        console.log(`[CACHE MISS] Fetching ${cacheKey} from MongoDB...`);
         const task = await Task.findById(req.params.id);
 
         if (!task) {
@@ -65,6 +87,7 @@ app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
 
         }
 
+        cache.set(cacheKey, task);
         res.status(200).json(task);
 
     } catch (err) {
@@ -77,7 +100,7 @@ app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
 
 
 // ==========================================
-// CREATE TASK
+// CREATE TASK (Invalidates all_tasks cache)
 // ==========================================
 
 app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
@@ -96,6 +119,10 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
 
         });
 
+        // Invalidate cache on write
+        cache.del("all_tasks");
+        console.log("[CACHE INVALIDATED] Key 'all_tasks' purged due to POST /tasks");
+
         res.status(201).json(task);
 
     } catch (err) {
@@ -108,7 +135,7 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
 
 
 // ==========================================
-// UPDATE TASK
+// UPDATE TASK (Invalidates all_tasks and task_:id cache)
 // ==========================================
 
 app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
@@ -151,6 +178,11 @@ app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
         }
 
+        // Invalidate cache on update
+        cache.del("all_tasks");
+        cache.del(`task_${req.params.id}`);
+        console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to PUT /tasks/${req.params.id}`);
+
         res.status(200).json(task);
 
     } catch (err) {
@@ -163,7 +195,7 @@ app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
 
 // ==========================================
-// DELETE TASK
+// DELETE TASK (Invalidates all_tasks and task_:id cache)
 // ==========================================
 
 app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
@@ -183,6 +215,11 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
 
         }
 
+        // Invalidate cache on delete
+        cache.del("all_tasks");
+        cache.del(`task_${req.params.id}`);
+        console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to DELETE /tasks/${req.params.id}`);
+
         res.status(200).json({
 
             message: "Task Deleted Successfully",
@@ -197,6 +234,18 @@ app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     }
 
+});
+
+
+// ==========================================
+// CACHE STATS (Debug / Monitoring Endpoint)
+// ==========================================
+
+app.get("/cache/stats", authMiddleware, (req, res) => {
+    res.status(200).json({
+        keys: cache.keys(),
+        stats: cache.getStats()
+    });
 });
 
 

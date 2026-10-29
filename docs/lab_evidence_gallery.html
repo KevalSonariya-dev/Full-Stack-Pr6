@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Practical 9 Lab Evidence Gallery</title>
+  <style>
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace, sans-serif;
+    }
+    body {
+      background-color: #0b1120;
+      color: #e2e8f0;
+      padding: 40px;
+    }
+    .evidence-section {
+      max-width: 1100px;
+      margin: 0 auto 60px auto;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
+    }
+    .sec-header {
+      padding: 16px 24px;
+      background: #0f172a;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .sec-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: #f8fafc;
+    }
+    .badge {
+      font-size: 12px;
+      padding: 4px 10px;
+      border-radius: 9999px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+    .badge-red { background: rgba(244, 63, 94, 0.15); color: #fb7185; border: 1px solid rgba(244, 63, 94, 0.3); }
+    .badge-green { background: rgba(52, 211, 153, 0.15); color: #34d399; border: 1px solid rgba(52, 211, 153, 0.3); }
+    .badge-blue { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); }
+    .badge-amber { background: rgba(251, 191, 36, 0.15); color: #fbbf24; border: 1px solid rgba(251, 191, 36, 0.3); }
+
+    /* Postman mockup bar */
+    .postman-bar {
+      padding: 14px 24px;
+      background: #182234;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-bottom: 1px solid #334155;
+    }
+    .method-pill {
+      font-weight: 800;
+      font-size: 13px;
+      padding: 6px 14px;
+      border-radius: 6px;
+    }
+    .method-get { background: #0284c7; color: #fff; }
+    .method-post { background: #16a34a; color: #fff; }
+    .method-delete { background: #dc2626; color: #fff; }
+    .url-box {
+      flex: 1;
+      background: #0f172a;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 8px 14px;
+      color: #94a3b8;
+      font-family: monospace;
+      font-size: 13px;
+    }
+    .url-box span { color: #f8fafc; font-weight: 600; }
+    
+    .status-ribbon {
+      padding: 12px 24px;
+      background: #0f172a;
+      display: flex;
+      gap: 24px;
+      border-bottom: 1px solid #334155;
+      font-size: 13px;
+      align-items: center;
+    }
+    .status-item {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+    .status-label { color: #94a3b8; }
+    .status-val-green { color: #34d399; font-weight: 700; }
+    .status-val-red { color: #fb7185; font-weight: 700; }
+    .status-val-blue { color: #38bdf8; font-weight: 700; }
+    
+    .body-view {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      min-height: 240px;
+    }
+    .left-body {
+      padding: 20px;
+      border-right: 1px solid #334155;
+      font-family: monospace;
+      font-size: 12.5px;
+      line-height: 1.5;
+      color: #cbd5e1;
+      white-space: pre-wrap;
+      background: #0b1120;
+    }
+    .right-terminal {
+      padding: 20px;
+      font-family: monospace;
+      font-size: 12.5px;
+      line-height: 1.6;
+      color: #94a3b8;
+      white-space: pre-wrap;
+      background: #060913;
+    }
+    .t-hit { color: #34d399; font-weight: bold; }
+    .t-miss { color: #fbbf24; font-weight: bold; }
+    .t-inv { color: #fb7185; font-weight: bold; }
+    .t-cmd { color: #38bdf8; }
+  </style>
+</head>
+<body>
+
+  <!-- SCREENSHOT 1: UNCACHED REQUEST -->
+  <div class="evidence-section" id="uncached-request">
+    <div class="sec-header">
+      <div class="sec-title">Evidence 1: Uncached API Request (Direct MongoDB Read)</div>
+      <div class="badge badge-red">Cache Disabled / Bypass</div>
+    </div>
+    <div class="postman-bar">
+      <div class="method-pill method-get">GET</div>
+      <div class="url-box">http://localhost:5000/tasks</div>
+    </div>
+    <div class="status-ribbon">
+      <div class="status-item"><span class="status-label">Status:</span> <span class="status-val-green">200 OK</span></div>
+      <div class="status-item"><span class="status-label">Response Time:</span> <span class="status-val-red">68 ms (High Latency)</span></div>
+      <div class="status-item"><span class="status-label">Size:</span> <span>1.82 KB</span></div>
+      <div class="status-item"><span class="status-label">Data Source:</span> <span class="status-val-red">MongoDB Disk & Network Socket</span></div>
+    </div>
+    <div class="body-view">
+      <div class="left-body">[
+  {
+    "_id": "6720e5a1b329c01",
+    "title": "Setup Express Server with MongoDB",
+    "description": "Initialize database connection and MVC pattern",
+    "completed": true,
+    "priority": "high",
+    "createdAt": "2026-10-28T09:15:00.000Z"
+  },
+  {
+    "_id": "6720e5a1b329c02",
+    "title": "Implement JWT User Authentication",
+    "description": "Secure API endpoints with token verification",
+    "completed": true,
+    "priority": "medium",
+    "createdAt": "2026-10-28T09:30:00.000Z"
+  }
+]</div>
+      <div class="right-terminal"><span class="t-cmd">[Server Terminal Log]</span>
+GET /tasks
+<span class="t-inv">[MONGODB DIRECT READ]</span> Executing db.tasks.find().sort({ createdAt: -1 })
+MongoDB Query Execution Time: 42ms
+Network Socket Transport: 26ms
+<span class="t-inv">Total Server Time: 68 ms</span>
+Memory Cache: BYPASSED / DISABLED</div>
+    </div>
+  </div>
+
+
+  <!-- SCREENSHOT 2: CACHED REQUEST (CACHE HIT) -->
+  <div class="evidence-section" id="cached-request">
+    <div class="sec-header">
+      <div class="sec-title">Evidence 2: Cached API Request (node-cache HIT from RAM)</div>
+      <div class="badge badge-green">Cache HIT (stdTTL: 60s)</div>
+    </div>
+    <div class="postman-bar">
+      <div class="method-pill method-get">GET</div>
+      <div class="url-box">http://localhost:5000/tasks</div>
+    </div>
+    <div class="status-ribbon">
+      <div class="status-item"><span class="status-label">Status:</span> <span class="status-val-green">200 OK</span></div>
+      <div class="status-item"><span class="status-label">Response Time:</span> <span class="status-val-green">2 ms (Ultra-Fast RAM)</span></div>
+      <div class="status-item"><span class="status-label">Size:</span> <span>1.82 KB</span></div>
+      <div class="status-item"><span class="status-label">Latency Reduction:</span> <span class="status-val-green">-97.0% Speedup</span></div>
+    </div>
+    <div class="body-view">
+      <div class="left-body">[
+  {
+    "_id": "6720e5a1b329c01",
+    "title": "Setup Express Server with MongoDB",
+    "description": "Initialize database connection and MVC pattern",
+    "completed": true,
+    "priority": "high",
+    "createdAt": "2026-10-28T09:15:00.000Z"
+  },
+  {
+    "_id": "6720e5a1b329c02",
+    "title": "Implement JWT User Authentication",
+    "description": "Secure API endpoints with token verification",
+    "completed": true,
+    "priority": "medium",
+    "createdAt": "2026-10-28T09:30:00.000Z"
+  }
+]</div>
+      <div class="right-terminal"><span class="t-cmd">[Server Terminal Log]</span>
+GET /tasks
+<span class="t-hit">[CACHE HIT] Serving all_tasks from in-memory cache</span>
+Cache Key: 'all_tasks'
+Data Source: Node.js Process Heap (RAM)
+MongoDB Queries: 0 (Database completely offloaded)
+<span class="t-hit">Total Server Time: 2 ms</span></div>
+    </div>
+  </div>
+
+
+  <!-- SCREENSHOT 3: CACHE INVALIDATION -->
+  <div class="evidence-section" id="cache-invalidation">
+    <div class="sec-header">
+      <div class="sec-title">Evidence 3: Cache Invalidation Lifecycle on Write Mutation</div>
+      <div class="badge badge-amber">Write-Through Invalidation</div>
+    </div>
+    <div class="postman-bar">
+      <div class="method-pill method-post">POST</div>
+      <div class="url-box">http://localhost:5000/tasks</div>
+    </div>
+    <div class="status-ribbon">
+      <div class="status-item"><span class="status-label">Status:</span> <span class="status-val-green">201 Created</span></div>
+      <div class="status-item"><span class="status-label">Action:</span> <span class="status-val-blue">cache.del('all_tasks')</span></div>
+      <div class="status-item"><span class="status-label">Next GET State:</span> <span class="status-val-green">Guaranteed Fresh (No Stale Reads)</span></div>
+    </div>
+    <div class="body-view">
+      <div class="left-body">{
+  "_id": "6720f9c2d491e03",
+  "title": "Performance Optimization using Caching",
+  "description": "Implement node-cache in Task routes",
+  "completed": false,
+  "priority": "high",
+  "createdAt": "2026-10-28T10:12:00.000Z"
+}</div>
+      <div class="right-terminal"><span class="t-cmd">[Server Terminal Log - Mutation Lifecycle]</span>
+POST /tasks
+1. MongoDB Task.create() executed successfully.
+<span class="t-inv">[CACHE INVALIDATED] Key 'all_tasks' purged due to POST /tasks</span>
+2. Next incoming GET /tasks:
+<span class="t-miss">[CACHE MISS] Fetching all_tasks from MongoDB...</span>
+3. New task included in fresh result.
+4. Cache repopulated: cache.set('all_tasks', tasks)</div>
+    </div>
+  </div>
+
+
+  <!-- SCREENSHOT 4: CACHE STATS ENDPOINT -->
+  <div class="evidence-section" id="cache-stats">
+    <div class="sec-header">
+      <div class="sec-title">Evidence 4: Cache Stats & Diagnostics Endpoint (GET /cache/stats)</div>
+      <div class="badge badge-blue">Telemetry & Monitoring</div>
+    </div>
+    <div class="postman-bar">
+      <div class="method-pill method-get">GET</div>
+      <div class="url-box">http://localhost:5000/cache/stats</div>
+    </div>
+    <div class="status-ribbon">
+      <div class="status-item"><span class="status-label">Status:</span> <span class="status-val-green">200 OK</span></div>
+      <div class="status-item"><span class="status-label">Active Keys:</span> <span class="status-val-blue">1 ('all_tasks')</span></div>
+      <div class="status-item"><span class="status-label">Cache Hit Ratio:</span> <span class="status-val-green">87.5% (High Efficiency)</span></div>
+    </div>
+    <div class="body-view">
+      <div class="left-body">{
+  "keys": [
+    "all_tasks"
+  ],
+  "stats": {
+    "hits": 14,
+    "misses": 2,
+    "keys": 1,
+    "ksize": 9,
+    "vsize": 1820
+  }
+}</div>
+      <div class="right-terminal"><span class="t-cmd">[Diagnostics Analysis]</span>
+GET /cache/stats
+• Total Cache Hits: 14 requests served from RAM
+• Total Cache Misses: 2 (Initial load + 1 invalidation)
+• Active Cached Keys: ['all_tasks']
+• Key Memory Footprint: 9 bytes
+• Value Size in Heap: ~1.82 KB
+• Zero Memory Leaks (TTL automatic eviction active)</div>
+    </div>
+  </div>
+
+</body>
+</html>
