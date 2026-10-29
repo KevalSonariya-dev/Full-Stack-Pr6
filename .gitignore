@@ -5,3 +5,5 @@ build/
 .vite/
 coverage/
 *.log
+
+*.zip

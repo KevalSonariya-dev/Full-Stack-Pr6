@@ -334,3 +334,114 @@ docker-compose down -v
 ### Q3: Why is it bad practice to copy `node_modules` into a Docker image instead of running `npm install` inside?
 - **Platform Incompatibilities:** Native binary packages (like `bcryptjs` / native bindings) compiled on a Windows host will fail or crash inside a Linux-based container environment.
 - **Image Bloat:** Copying hundreds of megabytes of host `node_modules` degrades build cache efficiency and inflates context transfer times.
+
+
+---
+
+# Practical 12: CI/CD Pipeline with GitHub Actions
+
+**Course:** Advanced Web Development Frameworks (ITUE301)  
+**Student:** Keval Sonariya  
+**Repository:** Full-Stack Task Management Project  
+**Pipeline Status:** [![CI Pipeline](https://github.com/KevalSonariya-dev/Full-Stack-Pr6/actions/workflows/ci.yml/badge.svg)](https://github.com/KevalSonariya-dev/Full-Stack-Pr6/actions/workflows/ci.yml)
+
+---
+
+## 1. Objective
+To automate testing and deployment verification of the application using a Continuous Integration (CI) pipeline powered by GitHub Actions.
+
+---
+
+## 2. CI/CD Architecture & Workflow
+
+```text
+git push origin main
+       │
+       ▼
+GitHub Actions Trigger (on: push / pull_request)
+       │
+       ▼
+Job: build-and-test (ubuntu-latest runner)
+ ├── 1. Checkout code (actions/checkout@v4)
+ ├── 2. Setup Node.js v18 (actions/setup-node@v4)
+ ├── 3. Install dependencies (npm install in Backend)
+ ├── 4. Run automated tests (npm test via Jest & Supertest)
+ └── 5. Report pass / fail status
+       │
+       ▼
+Green checkmark (Passed) or Red X (Failed) on GitHub
+```
+
+---
+
+## 3. Workflow Configuration (`.github/workflows/ci.yml`)
+
+```yaml
+name: CI Pipeline
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build-and-test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Backend
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install dependencies
+        run: npm install
+
+      - name: Run automated tests
+        run: npm test
+```
+
+---
+
+## 4. Automated Tests (`Backend/tasks.test.js`)
+The CI pipeline runs automated unit/integration tests using **Jest** and **Supertest**:
+1. **Primary Endpoint Test (`GET /tasks`):**
+   - Asserts that `GET /tasks` returns HTTP status `200 OK` and a valid JSON array of tasks.
+2. **Secondary Endpoint Test (`GET /health`):**
+   - Asserts that `GET /health` returns HTTP status `200 OK` and `{ status: "OK" }`.
+
+---
+
+## 5. Pipeline Demonstration Evidence
+
+### Failed Pipeline Run (Deliberate Failure)
+> *Test assertion changed to expect status `500` instead of `200` to verify the pipeline catches broken code.*  
+*(Insert screenshot of Red ❌ failed run here: `docs/ci-failed-run.png`)*
+
+### Passed Pipeline Run (Corrected Code)
+> *Test assertion restored to expect status `200`, successfully turning the build green.*  
+*(Insert screenshot of Green ✔️ passed run here: `docs/ci-passed-run.png`)*
+
+---
+
+## 6. Key Questions & Viva Preparation (Practical 12)
+
+### Q1: What is the difference between Continuous Integration (CI) and Continuous Deployment (CD), and which one does this practical demonstrate?
+- **Continuous Integration (CI):** The practice of automating the building and testing of code every time a team member commits changes to version control. This practical specifically demonstrates **CI** by automating dependency installation and test execution on every `git push`.
+- **Continuous Deployment (CD):** The practice of automatically deploying validated changes directly into staging or production hosting environments without manual intervention.
+
+### Q2: Why does running tests automatically on every push catch problems earlier than testing manually before a release?
+- Running tests on push follows the **"Shift-Left"** philosophy: defects are detected within seconds of being written, while the context is fresh in the developer's mind.
+- In contrast, manual testing before release creates bottlenecks, delays feedback cycles, and makes identifying which specific commit caused a regression significantly harder.
+
+### Q3: What would happen to the pipeline if the test file path were incorrect? Would the workflow fail at the same step as a genuine test failure?
+- It would fail inside the **"Run automated tests"** step, but with a different root cause:
+  - If no matching test files are found, Jest fails or warns (`No tests found`).
+  - A genuine test failure runs the test suite and fails an `expect(...)` assertion, exiting with code 1.
+  - If the path in `ci.yml` is incorrect (e.g. invalid directory), the step fails immediately before executing the test runner.

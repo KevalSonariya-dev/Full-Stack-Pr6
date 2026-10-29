@@ -26,6 +26,12 @@ app.use((req, res, next) => {
     next();
 });
 
+// Health check endpoint for CI/CD and uptime monitoring
+app.get("/health", (req, res) => {
+    res.status(200).json({ status: "OK", service: "task-manager-api" });
+});
+
+
 
 // ==========================================
 // REAL-TIME SSE STREAM (Multi-Tab Synchronization)
@@ -568,4 +574,9 @@ async function startServer() {
 
 }
 
-startServer();
+// Export app for test suites (Jest/Supertest) and start server only in non-test mode
+if (process.env.NODE_ENV !== "test") {
+    startServer();
+}
+
+module.exports = app;
