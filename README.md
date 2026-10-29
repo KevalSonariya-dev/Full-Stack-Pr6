@@ -445,3 +445,79 @@ The CI pipeline runs automated unit/integration tests using **Jest** and **Super
   - If no matching test files are found, Jest fails or warns (`No tests found`).
   - A genuine test failure runs the test suite and fails an `expect(...)` assertion, exiting with code 1.
   - If the path in `ci.yml` is incorrect (e.g. invalid directory), the step fails immediately before executing the test runner.
+
+
+---
+
+# Practical 13: AI API Integration into a Web Application
+
+**Course:** Advanced Web Development Frameworks (ITUE301)  
+**Student:** Keval Sonariya  
+**Repository:** Full-Stack Task Management Project  
+
+---
+
+## 1. Objective
+To integrate an external AI service (Google Gemini API / OpenAI API) into the full-stack web application, ensuring server-side secret management, graceful degradation, and responsible AI practices.
+
+---
+
+## 2. Architecture & Flow
+
+```text
+React Frontend (Task Creation Form)
+       │
+       │  1. User enters title & clicks "✨ Auto-generate with AI"
+       ▼
+Express Backend (POST /api/ai/generate-description)
+       │
+       │  2. Reads API key server-side from .env (never exposed)
+       │  3. Performs rate limit check (5s cooldown per client)
+       ▼
+Google Gemini API / OpenAI API
+       │
+       │  4. Returns concise contextual task description
+       ▼
+Express Backend
+       │
+       │  5. Graceful fallback on timeout / quota / network error
+       ▼
+React Frontend
+       │
+       │  6. Fills description textarea as an editable suggestion
+       │  7. Displays AI disclaimer badge (Human-in-the-loop review)
+```
+
+---
+
+## 3. Features Implemented
+
+1. **Secure API Key Management:**
+   - Keys (`GEMINI_API_KEY` or `OPENAI_API_KEY`) reside exclusively in `Backend/.env`.
+   - `.env` is strictly excluded via `.gitignore` to prevent credential leakage.
+2. **Graceful Degradation:**
+   - If external AI calls fail or no key is configured, the server returns a structured fallback response (`{ fallback: true }`) without crashing the application.
+3. **Frontend UI Experience:**
+   - Loading indicator (`ai-spinner` and *"Generating..."*) prevents double-submits.
+   - The returned description is completely **editable** before the task is created.
+   - Clear AI disclaimer badge informing users to review generated content.
+4. **Rate Limiting:**
+   - In-memory cooldown prevents excessive calls and protects API quota.
+
+---
+
+## 4. Key Questions & Viva Preparation (Practical 13)
+
+### Q1: Why must the AI API key be called from the backend rather than directly from the React frontend?
+- Frontend client code runs in the user's browser. Any environment variables embedded in client bundles or network requests are visible to anyone via Browser DevTools (Network tab / bundle inspection).
+- Calling the AI from the Express backend keeps the private key hidden on the server, prevents credential theft, and allows centralized rate limiting and usage auditing.
+
+### Q2: What does "graceful degradation" mean in this context, and why does it matter for third-party services?
+- Graceful degradation is a software design pattern where an application continues to provide core functionality even when an optional dependency (external AI API) fails or times out.
+- Since third-party APIs operate outside our control (subject to outages, rate limits, and network latency), graceful degradation ensures users can still create and manage tasks uninterrupted.
+
+### Q3: What are the privacy and governance implications of sending task data to an external AI API?
+- **Data Privacy & Governance:** External AI providers may log, store, or use request data for model training unless zero-data-retention agreements are in place.
+- **Data that should NEVER be sent:**
+  - Personally Identifiable Information (PII) such as passwords, SSN/Aadhaar numbers, phone numbers, or credit card info.
+  - Proprietary source code, secret keys, or confidential business data.

@@ -5,6 +5,7 @@ import {
   createTask,
   updateTask,
   deleteTask,
+  generateAiDescription,
 } from "../api/api";
 
 import toast from "react-hot-toast";
@@ -26,6 +27,8 @@ function Projects() {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [priority, setPriority] = useState("medium");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [aiNotice, setAiNotice] = useState(null);
 
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
@@ -35,6 +38,45 @@ function Projects() {
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [editPriority, setEditPriority] = useState("medium");
+
+  const handleAiGenerate = async () => {
+    if (!title.trim()) {
+      toast.error("Please enter a task title first!");
+      return;
+    }
+
+    setAiLoading(true);
+    setAiNotice(null);
+
+    try {
+      const res = await generateAiDescription(title);
+      if (res && res.description) {
+        setDescription(res.description);
+        if (res.fallback) {
+          setAiNotice({
+            type: "fallback",
+            text: res.message || "AI service offline. Contextual suggestion provided.",
+          });
+          toast("Contextual suggestion applied (AI offline)", { icon: "ℹ️" });
+        } else {
+          setAiNotice({
+            type: "success",
+            text: `Generated via ${res.provider || "AI"}. This is an editable suggestion.`,
+          });
+          toast.success("AI description generated!");
+        }
+      } else if (res && res.rateLimited) {
+        toast.error(res.message);
+      } else {
+        toast.error("Could not generate description. Please enter manually.");
+      }
+    } catch (err) {
+      console.error("[AI Error]", err);
+      toast.error(err.message || "AI generation failed");
+    } finally {
+      setAiLoading(false);
+    }
+  };
 
   const loadTasks = async () => {
     try {
@@ -196,6 +238,7 @@ function Projects() {
       setTitle("");
       setDescription("");
       setPriority("medium");
+      setAiNotice(null);
       toast.success("Task created successfully");
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
         const bc = new BroadcastChannel("tasks_realtime_sync");
@@ -420,16 +463,38 @@ function Projects() {
               />
             </label>
 
-            <label className="field">
-              <span>Description</span>
+            <div className="field">
+              <div className="description-header-row">
+                <span>Description</span>
+                <button
+                  type="button"
+                  className="btn-ai-generate"
+                  onClick={handleAiGenerate}
+                  disabled={aiLoading || !title.trim()}
+                  title={!title.trim() ? "Enter a task title first to use AI" : "Auto-generate description with AI"}
+                >
+                  {aiLoading ? (
+                    <>
+                      <span className="ai-spinner"></span> Generating...
+                    </>
+                  ) : (
+                    <>✨ Auto-generate with AI</>
+                  )}
+                </button>
+              </div>
               <textarea
                 value={description}
                 onChange={(event) => setDescription(event.target.value)}
-                placeholder="Add a short task description"
+                placeholder="Add a short task description (or click Auto-generate above)"
                 rows="4"
                 aria-label="Task description"
               />
-            </label>
+              {aiNotice && (
+                <div className={`ai-disclaimer ${aiNotice.type}`}>
+                  <span>{aiNotice.type === "success" ? "🤖" : "ℹ️"} {aiNotice.text}</span>
+                </div>
+              )}
+            </div>
 
             <label className="field">
               <span>Priority</span>

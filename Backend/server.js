@@ -11,6 +11,7 @@ const { validateTask, validateAuth } = require("./middleware/validationMiddlewar
 const cache = require("./cache");
 const taskEvents = require("./events");
 require("./listeners");
+const { generateTaskDescription } = require("./aiService");
 
 dotenv.config();
 
@@ -29,6 +30,30 @@ app.use((req, res, next) => {
 // Health check endpoint for CI/CD and uptime monitoring
 app.get("/health", (req, res) => {
     res.status(200).json({ status: "OK", service: "task-manager-api" });
+});
+
+// ==========================================
+// AI TASK DESCRIPTION GENERATION (Practical 13)
+// ==========================================
+app.post("/api/ai/generate-description", authMiddleware, async (req, res) => {
+    try {
+        const { title } = req.body;
+        if (!title || !title.trim()) {
+            return res.status(400).json({ error: "Task title is required" });
+        }
+
+        const clientId = req.user?.id || req.ip;
+        const result = await generateTaskDescription(title, clientId);
+        return res.status(200).json(result);
+    } catch (err) {
+        console.error("[AI Route Error]", err.message);
+        return res.status(200).json({
+            description: "",
+            fallback: true,
+            error: err.message,
+            message: "AI service encountered an issue. Please provide description manually."
+        });
+    }
 });
 
 
