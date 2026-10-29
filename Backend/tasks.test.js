@@ -18,10 +18,10 @@ jest.mock("./middleware/authMiddleware", () => (req, res, next) => {
 const app = require("./server");
 
 describe("Task Management API - CI/CD Automated Tests", () => {
-  // Test 1: Required by Practical 12 lab manual
+  // Test 1: Required by Practical 12 lab manual (Deliberately broken to demonstrate CI pipeline failure)
   test("GET /tasks returns 200", async () => {
     const res = await request(app).get("/tasks");
-    expect(res.statusCode).toBe(200);
+    expect(res.statusCode).toBe(500); // Deliberate failure: expecting 500 but API returns 200
     expect(Array.isArray(res.body)).toBe(true);
   });
 
@@ -32,4 +32,3 @@ describe("Task Management API - CI/CD Automated Tests", () => {
     expect(res.body.status).toBe("OK");
   });
 });
-
