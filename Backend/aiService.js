@@ -18,7 +18,7 @@ const isRateLimited = (clientId) => {
 // Contextual fallback description when external AI services are unreachable or unconfigured
 const getFallbackDescription = (title) => {
     const cleanTitle = (title || "Task").trim();
-    return `Plan, execute, and verify all required steps for "${cleanTitle}". Review progress and ensure all objectives are completed on schedule.`;
+    return `Define the scope and requirements for "${cleanTitle}". Break down into actionable milestones, execute implementation steps, and verify quality standards before completion.`;
 };
 
 /**
@@ -43,17 +43,23 @@ async function generateTaskDescription(title, clientId = "default") {
     }
 
     const trimmedTitle = title.trim();
-    const prompt = `Write a concise, practical, 2-3 sentence task description for a task titled "${trimmedTitle}". Do not include quotes, markdown headers, or labels like "Description:".`;
+    const prompt = `You are an expert project manager and productivity assistant.
+Create an actionable, practical task description for a task titled: "${trimmedTitle}".
+
+Guidelines:
+- Outline 2-3 clear, actionable steps or concrete deliverables to successfully complete this task.
+- Be direct, professional, and practical.
+- Do NOT use conversational filler (e.g. "Sure, here is..."), markdown headers, or quotation marks.`;
 
     // 1. Try Google Gemini API if GEMINI_API_KEY is configured
+    // Prioritize low-latency models (gemini-3.1-flash-lite, gemini-3.5-flash) for ~1.5s responses
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey && geminiKey.trim()) {
-        // Try active model endpoints in order of preference
         const models = [
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash",
             "gemini-3.8-flash",
-            "gemini-flash-latest",
-            "gemini-2.5-pro",
-            "gemini-pro-latest"
+            "gemini-flash-latest"
         ];
         for (const model of models) {
             try {
@@ -61,9 +67,16 @@ async function generateTaskDescription(title, clientId = "default") {
                 const response = await fetch(url, {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
+                    signal: AbortSignal.timeout(15000), // 15-second safety timeout
                     body: JSON.stringify({
                         contents: [{ parts: [{ text: prompt }] }],
-                        generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
+                        generationConfig: {
+                            maxOutputTokens: 150,
+                            temperature: 0.3,
+                            thinkingConfig: {
+                                thinkingBudget: 0
+                            }
+                        }
                     })
                 });
 
@@ -80,6 +93,9 @@ async function generateTaskDescription(title, clientId = "default") {
                 } else {
                     const errData = await response.json().catch(() => ({}));
                     console.warn(`[AI Service] Gemini (${model}) returned HTTP ${response.status}:`, errData?.error?.message || response.statusText);
+                    if (response.status === 401) {
+                        break;
+                    }
                 }
             } catch (geminiErr) {
                 console.warn(`[AI Service] Gemini (${model}) network error:`, geminiErr.message);
@@ -91,12 +107,12 @@ async function generateTaskDescription(title, clientId = "default") {
     const openAiKey = process.env.OPENAI_API_KEY;
     if (openAiKey && openAiKey.trim()) {
         try {
-            const client = new OpenAI({ apiKey: openAiKey.trim() });
+            const client = new OpenAI({ apiKey: openAiKey.trim(), timeout: 15000 });
             const completion = await client.chat.completions.create({
                 model: "gpt-4o-mini",
                 messages: [{ role: "user", content: prompt }],
                 max_tokens: 150,
-                temperature: 0.7
+                temperature: 0.3
             });
 
             const generatedText = completion?.choices?.[0]?.message?.content?.trim();

@@ -106,20 +106,24 @@ function Projects() {
 
     const handleIncomingSync = (type, data) => {
       if (!data) return;
+      const incomingId = String(data._id || data.id || "");
+      if (!incomingId) return;
+
       if (type === "TASK_CREATED") {
-        const newTask = data;
         setTasks((prev) => {
-          if (prev.some((t) => t._id === newTask._id)) return prev;
-          return [newTask, ...prev];
+          if (prev.some((t) => String(t._id || t.id) === incomingId)) {
+            return prev;
+          }
+          return [data, ...prev];
         });
       } else if (type === "TASK_UPDATED") {
-        const updatedTask = data;
         setTasks((prev) =>
-          prev.map((t) => (t._id === updatedTask._id ? updatedTask : t))
+          prev.map((t) => (String(t._id || t.id) === incomingId ? data : t))
         );
       } else if (type === "TASK_DELETED") {
-        const deletedId = data._id || data;
-        setTasks((prev) => prev.filter((t) => t._id !== deletedId));
+        setTasks((prev) =>
+          prev.filter((t) => String(t._id || t.id) !== incomingId)
+        );
       }
     };
 
@@ -217,6 +221,8 @@ function Projects() {
   const handleCreateTask = async (event) => {
     event.preventDefault();
 
+    if (actionLoading) return;
+
     if (!title.trim()) {
       setError("Task title is required");
       toast.error("Task title is required");
@@ -234,7 +240,13 @@ function Projects() {
         priority,
       });
 
-      setTasks((previousTasks) => [newTask, ...previousTasks]);
+      const newId = String(newTask._id || newTask.id || "");
+      setTasks((previousTasks) => {
+        if (newId && previousTasks.some((t) => String(t._id || t.id) === newId)) {
+          return previousTasks;
+        }
+        return [newTask, ...previousTasks];
+      });
       setTitle("");
       setDescription("");
       setPriority("medium");
