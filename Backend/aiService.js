@@ -15,10 +15,10 @@ const isRateLimited = (clientId) => {
     return false;
 };
 
-// Contextual fallback description when external AI services are unreachable or no key configured
+// Contextual fallback description when external AI services are unreachable or unconfigured
 const getFallbackDescription = (title) => {
     const cleanTitle = (title || "Task").trim();
-    return `Plan, execute, and verify all required steps for "${cleanTitle}". Review progress and ensure all objectives are completed on schedule.`;
+    return `Define the scope and requirements for "${cleanTitle}". Break down into actionable milestones, execute implementation steps, and verify quality standards before completion.`;
 };
 
 /**
@@ -43,50 +43,76 @@ async function generateTaskDescription(title, clientId = "default") {
     }
 
     const trimmedTitle = title.trim();
-    const prompt = `Write a concise, practical, 2-3 sentence task description for a task titled "${trimmedTitle}". Do not include quotes, markdown headers, or labels like "Description:".`;
+    const prompt = `You are an expert project manager and productivity assistant.
+Create an actionable, practical task description for a task titled: "${trimmedTitle}".
 
-    // 1. Prioritize Google Gemini API (Free tier) if GEMINI_API_KEY is set
+Guidelines:
+- Outline 2-3 clear, actionable steps or concrete deliverables to successfully complete this task.
+- Be direct, professional, and practical.
+- Do NOT use conversational filler (e.g. "Sure, here is..."), markdown headers, or quotation marks.`;
+
+    // 1. Try Google Gemini API if GEMINI_API_KEY is configured
+    // Prioritize low-latency models (gemini-3.1-flash-lite, gemini-3.5-flash) for ~1.5s responses
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey && geminiKey.trim()) {
-        try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.trim()}`;
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
-                })
-            });
+        const models = [
+            "gemini-3.1-flash-lite",
+            "gemini-3.5-flash",
+            "gemini-3.8-flash",
+            "gemini-flash-latest"
+        ];
+        for (const model of models) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    signal: AbortSignal.timeout(15000), // 15-second safety timeout
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: {
+                            maxOutputTokens: 150,
+                            temperature: 0.3,
+                            thinkingConfig: {
+                                thinkingBudget: 0
+                            }
+                        }
+                    })
+                });
 
-            if (response.ok) {
-                const data = await response.json();
-                const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                if (generatedText) {
-                    return {
-                        description: generatedText,
-                        provider: "Google Gemini",
-                        fallback: false
-                    };
+                if (response.ok) {
+                    const data = await response.json();
+                    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (generatedText) {
+                        return {
+                            description: generatedText,
+                            provider: `Google Gemini (${model})`,
+                            fallback: false
+                        };
+                    }
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    console.warn(`[AI Service] Gemini (${model}) returned HTTP ${response.status}:`, errData?.error?.message || response.statusText);
+                    if (response.status === 401) {
+                        break;
+                    }
                 }
-            } else {
-                console.warn(`[AI Service] Gemini returned HTTP ${response.status}`);
+            } catch (geminiErr) {
+                console.warn(`[AI Service] Gemini (${model}) network error:`, geminiErr.message);
             }
-        } catch (geminiErr) {
-            console.warn("[AI Service] Gemini API call error:", geminiErr.message);
         }
     }
 
-    // 2. Try OpenAI API if OPENAI_API_KEY is set
+    // 2. Try OpenAI API if OPENAI_API_KEY is configured
     const openAiKey = process.env.OPENAI_API_KEY;
     if (openAiKey && openAiKey.trim()) {
         try {
-            const client = new OpenAI({ apiKey: openAiKey.trim() });
+            const client = new OpenAI({ apiKey: openAiKey.trim(), timeout: 15000 });
             const completion = await client.chat.completions.create({
                 model: "gpt-4o-mini",
                 messages: [{ role: "user", content: prompt }],
                 max_tokens: 150,
-                temperature: 0.7
+                temperature: 0.3
             });
 
             const generatedText = completion?.choices?.[0]?.message?.content?.trim();
@@ -102,7 +128,7 @@ async function generateTaskDescription(title, clientId = "default") {
         }
     }
 
-    // 3. Graceful Degradation: Both APIs unavailable / unconfigured
+    // 3. Graceful Degradation: When external APIs fail or are unconfigured
     console.warn("[AI Service] External AI APIs unavailable. Using graceful degradation fallback.");
     return {
         description: getFallbackDescription(trimmedTitle),
@@ -116,4 +142,3 @@ module.exports = {
     getFallbackDescription,
     isRateLimited
 };
-

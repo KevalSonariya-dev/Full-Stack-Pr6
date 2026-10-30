@@ -40,5 +40,5 @@ describe("Task Management API - CI/CD Automated Tests", () => {
     expect(res.statusCode).toBe(200);
     expect(res.body).toHaveProperty("description");
     expect(typeof res.body.description).toBe("string");
-  });
+  }, 10000);
 });
