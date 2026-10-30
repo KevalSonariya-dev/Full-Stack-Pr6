@@ -15,7 +15,7 @@ const isRateLimited = (clientId) => {
     return false;
 };
 
-// Contextual fallback description when external AI services are unreachable or no key configured
+// Contextual fallback description when external AI services are unreachable or unconfigured
 const getFallbackDescription = (title) => {
     const cleanTitle = (title || "Task").trim();
     return `Plan, execute, and verify all required steps for "${cleanTitle}". Review progress and ensure all objectives are completed on schedule.`;
@@ -45,39 +45,49 @@ async function generateTaskDescription(title, clientId = "default") {
     const trimmedTitle = title.trim();
     const prompt = `Write a concise, practical, 2-3 sentence task description for a task titled "${trimmedTitle}". Do not include quotes, markdown headers, or labels like "Description:".`;
 
-    // 1. Prioritize Google Gemini API (Free tier) if GEMINI_API_KEY is set
+    // 1. Try Google Gemini API if GEMINI_API_KEY is configured
     const geminiKey = process.env.GEMINI_API_KEY;
     if (geminiKey && geminiKey.trim()) {
-        try {
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${geminiKey.trim()}`;
-            const response = await fetch(url, {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    contents: [{ parts: [{ text: prompt }] }],
-                    generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
-                })
-            });
+        // Try active model endpoints in order of preference
+        const models = [
+            "gemini-3.8-flash",
+            "gemini-flash-latest",
+            "gemini-2.5-pro",
+            "gemini-pro-latest"
+        ];
+        for (const model of models) {
+            try {
+                const url = `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${geminiKey.trim()}`;
+                const response = await fetch(url, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({
+                        contents: [{ parts: [{ text: prompt }] }],
+                        generationConfig: { maxOutputTokens: 150, temperature: 0.7 }
+                    })
+                });
 
-            if (response.ok) {
-                const data = await response.json();
-                const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
-                if (generatedText) {
-                    return {
-                        description: generatedText,
-                        provider: "Google Gemini",
-                        fallback: false
-                    };
+                if (response.ok) {
+                    const data = await response.json();
+                    const generatedText = data?.candidates?.[0]?.content?.parts?.[0]?.text?.trim();
+                    if (generatedText) {
+                        return {
+                            description: generatedText,
+                            provider: `Google Gemini (${model})`,
+                            fallback: false
+                        };
+                    }
+                } else {
+                    const errData = await response.json().catch(() => ({}));
+                    console.warn(`[AI Service] Gemini (${model}) returned HTTP ${response.status}:`, errData?.error?.message || response.statusText);
                 }
-            } else {
-                console.warn(`[AI Service] Gemini returned HTTP ${response.status}`);
+            } catch (geminiErr) {
+                console.warn(`[AI Service] Gemini (${model}) network error:`, geminiErr.message);
             }
-        } catch (geminiErr) {
-            console.warn("[AI Service] Gemini API call error:", geminiErr.message);
         }
     }
 
-    // 2. Try OpenAI API if OPENAI_API_KEY is set
+    // 2. Try OpenAI API if OPENAI_API_KEY is configured
     const openAiKey = process.env.OPENAI_API_KEY;
     if (openAiKey && openAiKey.trim()) {
         try {
@@ -102,7 +112,7 @@ async function generateTaskDescription(title, clientId = "default") {
         }
     }
 
-    // 3. Graceful Degradation: Both APIs unavailable / unconfigured
+    // 3. Graceful Degradation: When external APIs fail or are unconfigured
     console.warn("[AI Service] External AI APIs unavailable. Using graceful degradation fallback.");
     return {
         description: getFallbackDescription(trimmedTitle),
@@ -116,4 +126,3 @@ module.exports = {
     getFallbackDescription,
     isRateLimited
 };
-
