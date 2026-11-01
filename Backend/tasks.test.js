@@ -15,6 +15,15 @@ jest.mock("./middleware/authMiddleware", () => (req, res, next) => {
   next();
 });
 
+// Mock aiService so CI runs deterministically and without network dependency
+jest.mock("./aiService", () => ({
+  generateTaskDescription: jest.fn().mockResolvedValue({
+    description: "Define CI/CD deployment scope, configure build pipelines, and verify test stages.",
+    fallback: false,
+    provider: "Gemini-CI"
+  })
+}));
+
 const app = require("./server");
 
 describe("Task Management API - CI/CD Automated Tests", () => {

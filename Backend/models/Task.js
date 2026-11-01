@@ -1,5 +1,11 @@
 const mongoose = require("mongoose");
 const taskSchema = new mongoose.Schema({
+    user: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: "User",
+        index: true
+    },
+
     title: {
         type: String,
         required: [true, "Title is required"]

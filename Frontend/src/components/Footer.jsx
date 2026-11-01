@@ -1,3 +1,4 @@
+import { Link } from "react-router-dom";
 import "./Footer.css";
 
 function Footer() {
@@ -5,30 +6,24 @@ function Footer() {
 
   return (
     <footer className="footer">
-
       <div className="footer-container">
-
         <div className="footer-left">
           <h2>Keval Sonariya</h2>
           <p>
-            Java Programmer | B.Tech IT Student
+            Full-Stack Developer | B.Tech IT Student @ CHARUSAT
           </p>
         </div>
 
         <div className="footer-center">
-
           <h3>Quick Links</h3>
-
-          <a href="/">Home</a>
-          <a href="/projects">Tasks</a>
-          <a href="/contact">Contact</a>
-
+          <Link to="/">Home</Link>
+          <Link to="/portfolio">Portfolio</Link>
+          <Link to="/tasks">Tasks</Link>
+          <Link to="/contact">Contact</Link>
         </div>
 
         <div className="footer-right">
-
           <h3>Connect</h3>
-
           <a
             href="https://github.com/KevalSonariya-dev"
             target="_blank"
@@ -36,29 +31,24 @@ function Footer() {
           >
             GitHub
           </a>
-
           <a
-            href="https://linkedin.com"
+            href="https://www.linkedin.com/in/sonariya-keval-5b10392a5/"
             target="_blank"
             rel="noreferrer"
           >
             LinkedIn
           </a>
-
           <a href="mailto:d25it126@charusat.edu.in">
             Email
           </a>
-
         </div>
-
       </div>
 
       <hr />
 
       <p className="copyright">
-        © {year} Keval Sonariya. All Rights Reserved.
+        &copy; {year} Keval Sonariya. All Rights Reserved.
       </p>
-
     </footer>
   );
 }

@@ -23,11 +23,14 @@ function Navbar({ darkMode, setDarkMode }) {
         <li>
           <Link to="/">Home</Link>
         </li>
+        <li>
+          <Link to="/portfolio">Portfolio</Link>
+        </li>
 
         {isAuthenticated ? (
           <>
             <li>
-              <Link to="/projects">Tasks</Link>
+              <Link to="/tasks">Tasks</Link>
             </li>
             <li>
               <Link to="/contact">Contact</Link>

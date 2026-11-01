@@ -1,5 +1,5 @@
 import "./App.css";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, lazy, Suspense } from "react";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -9,6 +9,7 @@ import Spinner from "./components/Spinner";
 
 // Lazy-loaded route components
 const Home = lazy(() => import("./pages/Home"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Login = lazy(() => import("./pages/Login"));
@@ -30,16 +31,23 @@ function App() {
           <Suspense fallback={<Spinner message="Loading page..." />}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
+              {/* Personal Task Manager Route */}
               <Route
-                path="/projects"
+                path="/tasks"
                 element={
                   <ProtectedRoute>
                     <Projects />
                   </ProtectedRoute>
                 }
               />
+
+              {/* Backward compatibility alias: redirects /projects to /tasks */}
+              <Route path="/projects" element={<Navigate to="/tasks" replace />} />
+
               <Route path="/contact" element={<Contact />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

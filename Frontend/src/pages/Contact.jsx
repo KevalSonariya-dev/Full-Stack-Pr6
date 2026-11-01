@@ -7,11 +7,8 @@ function Contact() {
 
   return (
     <div className="contact-page">
-
       <div className="contact-card">
-
         <div className="contact-left">
-
           <h1>Get In Touch</h1>
 
           <p>
@@ -20,16 +17,26 @@ function Contact() {
           </p>
 
           <div className="contact-info">
-
             <h3>📧 Email</h3>
             <p>d25it126@charusat.edu.in</p>
 
             <h3>📍 Location</h3>
             <p>Gujarat, India</p>
 
-            <h3>💻 Skills</h3>
-            <p>Java • Python • Spring Boot</p>
+            <h3>💼 LinkedIn</h3>
+            <p>
+              <a
+                href="https://www.linkedin.com/in/sonariya-keval-5b10392a5/"
+                target="_blank"
+                rel="noreferrer"
+                style={{ color: "#2563eb", fontWeight: "600", textDecoration: "none" }}
+              >
+                Connect on LinkedIn &rarr;
+              </a>
+            </p>
 
+            <h3>💻 Skills</h3>
+            <p>Java • Python • Spring Boot • React</p>
           </div>
 
           <button
@@ -48,15 +55,12 @@ function Contact() {
               </p>
             </div>
           )}
-
         </div>
 
         <div className="contact-right">
-
           <h2>Send Message</h2>
 
           <form>
-
             <input
               type="text"
               placeholder="Your Name"

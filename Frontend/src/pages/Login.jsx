@@ -23,7 +23,7 @@ function Login() {
       setLoading(true);
       await login(email, password);
       toast.success("Login successful!");
-      navigate("/projects");
+      navigate("/tasks");
     } catch (err) {
       toast.error(err.message || "Invalid email or password");
     } finally {
@@ -36,7 +36,7 @@ function Login() {
       <div className="auth-card">
         <div className="auth-header">
           <h1>Welcome Back</h1>
-          <p>Login to access your task dashboard</p>
+          <p>Login to access your personal task dashboard</p>
         </div>
 
         <form onSubmit={handleSubmit} className="auth-form">
@@ -45,11 +45,11 @@ function Login() {
             <input
               id="login-email"
               type="email"
-              placeholder="e.g. name@example.com"
               value={email}
               onChange={(e) => setEmail(e.target.value)}
+              placeholder="you@example.com"
               required
-              disabled={loading}
+              autoComplete="email"
             />
           </div>
 
@@ -58,11 +58,11 @@ function Login() {
             <input
               id="login-password"
               type="password"
-              placeholder="Enter your password"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              placeholder="••••••••"
               required
-              disabled={loading}
+              autoComplete="current-password"
             />
           </div>
 
@@ -71,13 +71,14 @@ function Login() {
             className="auth-submit-btn"
             disabled={loading}
           >
-            {loading ? "Logging in..." : "Login"}
+            {loading ? "Logging in..." : "Login to Tasks"}
           </button>
         </form>
 
         <div className="auth-footer">
-          Don't have an account?
-          <Link to="/register">Register here</Link>
+          <p>
+            Don't have an account? <Link to="/register">Create one here</Link>
+          </p>
         </div>
       </div>
     </div>
