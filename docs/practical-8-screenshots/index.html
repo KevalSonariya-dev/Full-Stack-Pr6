@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Practical 8 Evidence Gallery &bull; Lazy Loading & Performance Optimization</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #0b1120; color: #e2e8f0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; padding: 40px 20px; }
+    .container { max-width: 1200px; margin: 0 auto; }
+    header { border-bottom: 1px solid #1e293b; padding-bottom: 24px; margin-bottom: 36px; display: flex; justify-content: space-between; align-items: center; }
+    h1 { font-size: 26px; font-weight: 800; color: #f8fafc; }
+    p.subtitle { color: #94a3b8; font-size: 14px; margin-top: 6px; }
+    .badge { background: rgba(56, 189, 248, 0.15); color: #38bdf8; border: 1px solid rgba(56, 189, 248, 0.3); padding: 6px 14px; border-radius: 9999px; font-size: 12px; font-weight: 700; }
+    .section-title { font-size: 18px; font-weight: 700; color: #38bdf8; margin: 32px 0 16px 0; display: flex; align-items: center; gap: 10px; }
+    .card { background: #0f172a; border: 1px solid #1e293b; border-radius: 12px; overflow: hidden; margin-bottom: 28px; box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+    .card-header { background: #1e293b; padding: 14px 20px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #334155; }
+    .card-title { font-weight: 700; font-size: 15px; color: #f1f5f9; }
+    .card-meta { font-size: 12px; color: #94a3b8; font-family: monospace; }
+    .card-img { display: block; width: 100%; height: auto; border: none; background: #020617; }
+  </style>
+</head>
+<body>
+<div class="container">
+  <header>
+    <div>
+      <h1>Practical 8: Performance Optimization and Lazy Loading</h1>
+      <p class="subtitle">Course: Advanced Web Development Frameworks (ITUE301) &bull; Student: Keval Sonariya</p>
+    </div>
+    <div class="badge">EVALUATION SCREENSHOTS GALLERY</div>
+  </header>
+
+  <div class="section-title"><span>💻</span> Part 1: Code Implementation Screenshots</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">1. Route-based Code Splitting with React.lazy() &amp; Suspense</span>
+      <span class="card-meta">01_code_lazy_routes_app_jsx.png &bull; Frontend/src/App.jsx</span>
+    </div>
+    <img class="card-img" src="01_code_lazy_routes_app_jsx.png" alt="App.jsx lazy routes" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">2. Meaningful Fallback UI Component (Spinner)</span>
+      <span class="card-meta">02_code_spinner_fallback_component.png &bull; Frontend/src/components/Spinner.jsx</span>
+    </div>
+    <img class="card-img" src="02_code_spinner_fallback_component.png" alt="Spinner Fallback Component" />
+  </div>
+
+  <div class="section-title"><span>⚡</span> Part 2: Build Output &amp; Benchmark Analysis</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">3. Vite Production Build Output Showing 6 On-Demand Route Chunks</span>
+      <span class="card-meta">03_vite_build_chunk_splitting.png &bull; Terminal &quot;npm run build&quot;</span>
+    </div>
+    <img class="card-img" src="03_vite_build_chunk_splitting.png" alt="Vite Build Output" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">4. Before vs. After Bundle Size Comparison Table</span>
+      <span class="card-meta">04_bundle_size_before_after_comparison.png &bull; Bundle Audit</span>
+    </div>
+    <img class="card-img" src="04_bundle_size_before_after_comparison.png" alt="Bundle Size Comparison Table" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">5. Visual Metrics Comparison Dashboard</span>
+      <span class="card-meta">09_performance_metrics_dashboard.png &bull; Visual Analytics</span>
+    </div>
+    <img class="card-img" src="09_performance_metrics_dashboard.png" alt="Performance Metrics Dashboard" />
+  </div>
+
+  <div class="section-title"><span>🌐</span> Part 3: Browser DevTools &amp; Route Output Screenshots</div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">6. DevTools Network Waterfall (On-Demand Chunk Loading on Navigation)</span>
+      <span class="card-meta">05_network_tab_lazy_chunks_loading.png &bull; DevTools Network Tab</span>
+    </div>
+    <img class="card-img" src="05_network_tab_lazy_chunks_loading.png" alt="DevTools Network Tab" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">7. Fallback Spinner UI Displayed During Slow 3G Network Throttling</span>
+      <span class="card-meta">06_slow_3g_fallback_spinner_ui.png &bull; Browser Route Navigation</span>
+    </div>
+    <img class="card-img" src="06_slow_3g_fallback_spinner_ui.png" alt="Slow 3G Fallback UI" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">8. Home Route Rendered ('/')</span>
+      <span class="card-meta">07_home_route_loaded.png &bull; Browser Output</span>
+    </div>
+    <img class="card-img" src="07_home_route_loaded.png" alt="Home Page Route" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">9. Contact Route Rendered ('/contact')</span>
+      <span class="card-meta">08_contact_route_loaded.png &bull; Browser Output</span>
+    </div>
+    <img class="card-img" src="08_contact_route_loaded.png" alt="Contact Page Route" />
+  </div>
+
+  <div class="card">
+    <div class="card-header">
+      <span class="card-title">10. Login Route Rendered ('/login')</span>
+      <span class="card-meta">10_login_route_loaded.png &bull; Browser Output</span>
+    </div>
+    <img class="card-img" src="10_login_route_loaded.png" alt="Login Page Route" />
+  </div>
+</div>
+</body>
+</html>
+
