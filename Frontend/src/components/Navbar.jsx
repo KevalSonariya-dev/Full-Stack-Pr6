@@ -27,7 +27,7 @@ function Navbar({ darkMode, setDarkMode }) {
         {isAuthenticated ? (
           <>
             <li>
-              <Link to="/projects">Tasks</Link>
+              <Link to="/tasks">Tasks</Link>
             </li>
             <li>
               <Link to="/contact">Contact</Link>

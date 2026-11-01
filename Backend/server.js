@@ -70,24 +70,39 @@ app.get("/tasks/stream", (req, res) => {
     res.setHeader("Connection", "keep-alive");
     res.flushHeaders();
 
+    // Extract user identity from query token if available
+    let clientUserId = null;
+    const token = req.query.token;
+    if (token) {
+        try {
+            const decoded = jwt.verify(token, process.env.JWT_SECRET);
+            clientUserId = decoded.id || decoded.userId;
+        } catch (e) {}
+    }
+
+    const client = { res, userId: clientUserId };
+    sseClients.push(client);
+    console.log(`[SSE] Tab connected (User: ${clientUserId || 'guest'}). Active: ${sseClients.length}`);
+
     // Handshake ping
     res.write(`data: ${JSON.stringify({ type: "CONNECTED" })}\n\n`);
 
-    sseClients.push(res);
-    console.log(`[SSE] Tab connected. Active connections: ${sseClients.length}`);
-
     req.on("close", () => {
-        sseClients = sseClients.filter((client) => client !== res);
-        console.log(`[SSE] Tab disconnected. Active connections: ${sseClients.length}`);
+        sseClients = sseClients.filter((c) => c !== client);
+        console.log(`[SSE] Tab disconnected. Active: ${sseClients.length}`);
     });
 });
 
-const broadcastSSE = (type, data) => {
+const broadcastSSE = (type, data, rawTaskUserId = null) => {
     if (sseClients.length === 0) return;
+    const taskUserId = rawTaskUserId ? String(rawTaskUserId._id || rawTaskUserId) : null;
     const payload = `data: ${JSON.stringify({ type, data })}\n\n`;
     sseClients.forEach((client) => {
         try {
-            client.write(payload);
+            // Strictly deliver only to the user who owns this task
+            if (client.userId && taskUserId && String(client.userId) === taskUserId) {
+                client.res.write(payload);
+            }
         } catch (err) {
             console.error("[SSE Broadcast Error]", err.message);
         }
@@ -97,15 +112,16 @@ const broadcastSSE = (type, data) => {
 // Connect EventEmitter to SSE real-time broadcast
 taskEvents.on("task-created", (payload) => {
     const task = payload.task || payload;
-    broadcastSSE("TASK_CREATED", task);
+    const taskUserId = task.user || payload.userId;
+    broadcastSSE("TASK_CREATED", task, taskUserId);
 });
 
 taskEvents.on("task-updated", (task) => {
-    broadcastSSE("TASK_UPDATED", task);
+    broadcastSSE("TASK_UPDATED", task, task.user);
 });
 
 taskEvents.on("task-deleted", (task) => {
-    broadcastSSE("TASK_DELETED", task);
+    broadcastSSE("TASK_DELETED", task, task.user);
 });
 
 
@@ -116,8 +132,8 @@ taskEvents.on("task-deleted", (task) => {
 app.get("/tasks", authMiddleware, async (req, res, next) => {
 
     try {
-
-        const cacheKey = "all_tasks";
+        const userId = req.user.id;
+        const cacheKey = `tasks_user_${userId}`;
         const cachedTasks = cache.get(cacheKey);
 
         if (cachedTasks) {
@@ -126,8 +142,8 @@ app.get("/tasks", authMiddleware, async (req, res, next) => {
         }
 
         console.log(`[CACHE MISS] Fetching ${cacheKey} from MongoDB...`);
-        const tasks = await Task.find()
-            .sort({ createdAt: -1 });
+        // Find tasks strictly belonging to this authenticated user
+        const tasks = await Task.find({ user: userId }).sort({ createdAt: -1 });
 
         // Cache the result with default TTL (60s)
         cache.set(cacheKey, tasks);
@@ -160,7 +176,7 @@ app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
         }
 
         console.log(`[CACHE MISS] Fetching ${cacheKey} from MongoDB...`);
-        const task = await Task.findById(req.params.id);
+        const task = await Task.findOne({ _id: req.params.id, user: userId });
 
         if (!task) {
 
@@ -190,22 +206,20 @@ app.get("/tasks/:id", authMiddleware, async (req, res, next) => {
 app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
 
     try {
+        const userId = req.user.id;
 
         const task = await Task.create({
-
+            user: userId,
             title: req.body.title,
-
             description: req.body.description,
-
             completed: req.body.completed,
-
             priority: req.body.priority
-
         });
 
-        // Invalidate cache on write
+        // Invalidate user-specific cache on write
+        cache.del(`tasks_user_${userId}`);
         cache.del("all_tasks");
-        console.log("[CACHE INVALIDATED] Key 'all_tasks' purged due to POST /tasks");
+        console.log(`[CACHE INVALIDATED] Key 'tasks_user_${userId}' purged due to POST /tasks`);
 
         console.log(`[API] Response sent at ${new Date().toISOString()}`);
         res.status(201).json(task);
@@ -213,6 +227,7 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
         // Emit background event (non-blocking notification processing)
         taskEvents.emit("task-created", {
             task,
+            userId,
             user: req.user?.email || "Authorized User"
         });
 
@@ -232,47 +247,38 @@ app.post("/tasks", authMiddleware, validateTask, async (req, res, next) => {
 app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
+        const userId = req.user.id;
 
-        const task = await Task.findByIdAndUpdate(
-
-            req.params.id,
-
+        const task = await Task.findOneAndUpdate(
             {
-                title: req.body.title,
+                _id: req.params.id,
+                user: userId
+            },
+            {
+                title: typeof req.body.title === "string" ? req.body.title.trim() : req.body.title,
                 description: req.body.description,
                 completed: req.body.completed,
-                priority: req.body.priority
+                priority: req.body.priority,
+                user: userId
             },
-
             {
                 new: true,
                 runValidators: true
             }
-
         );
 
         if (!task) {
-
             return res.status(404).json({
                 error: "Task Not Found",
-                message: "No task exists with the provided ID"
+                message: "No task exists with the provided ID or you do not have permission"
             });
-
         }
 
-        // Trim title during update
-        if (typeof task.title === "string") {
-
-            task.title = task.title.trim();
-
-            await task.save();
-
-        }
-
-        // Invalidate cache on update
+        // Invalidate user cache on update
+        cache.del(`tasks_user_${userId}`);
         cache.del("all_tasks");
         cache.del(`task_${req.params.id}`);
-        console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to PUT /tasks/${req.params.id}`);
+        console.log(`[CACHE INVALIDATED] Keys 'tasks_user_${userId}' and 'task_${req.params.id}' purged due to PUT`);
 
         res.status(200).json(task);
 
@@ -295,32 +301,30 @@ app.put("/tasks/:id", authMiddleware, async (req, res, next) => {
 app.delete("/tasks/:id", authMiddleware, async (req, res, next) => {
 
     try {
+        const userId = req.user.id;
 
-        const task = await Task.findByIdAndDelete(
-            req.params.id
-        );
+        const task = await Task.findOneAndDelete({
+            _id: req.params.id,
+            user: userId
+        });
 
         if (!task) {
-
             return res.status(404).json({
                 error: "Task Not Found",
-                message: "No task exists with the provided ID"
+                message: "No task exists with the provided ID or you do not have permission"
             });
-
         }
 
         // Invalidate cache on delete
+        cache.del(`tasks_user_${userId}`);
         cache.del("all_tasks");
         cache.del(`task_${req.params.id}`);
-        console.log(`[CACHE INVALIDATED] Keys 'all_tasks' and 'task_${req.params.id}' purged due to DELETE /tasks/${req.params.id}`);
+        console.log(`[CACHE INVALIDATED] Keys 'tasks_user_${userId}' and 'task_${req.params.id}' purged due to DELETE`);
 
         console.log(`[API] Delete response sent at ${new Date().toISOString()}`);
         res.status(200).json({
-
             message: "Task Deleted Successfully",
-
             deletedTask: task
-
         });
 
         // Emit background event (non-blocking audit logging)

@@ -1,5 +1,5 @@
 import "./App.css";
-import { Routes, Route } from "react-router-dom";
+import { Routes, Route, Navigate } from "react-router-dom";
 import { useState, lazy, Suspense } from "react";
 
 import { AuthProvider } from "./context/AuthContext";
@@ -32,14 +32,20 @@ function App() {
               <Route path="/" element={<Home />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
+              
+              {/* Personal Task Manager Route */}
               <Route
-                path="/projects"
+                path="/tasks"
                 element={
                   <ProtectedRoute>
                     <Projects />
                   </ProtectedRoute>
                 }
               />
+
+              {/* Backward compatibility alias: redirects /projects to /tasks */}
+              <Route path="/projects" element={<Navigate to="/tasks" replace />} />
+
               <Route path="/contact" element={<Contact />} />
               <Route path="*" element={<NotFound />} />
             </Routes>

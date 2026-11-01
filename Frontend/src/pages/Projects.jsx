@@ -7,7 +7,9 @@ import {
   deleteTask,
   generateAiDescription,
   BASE_URL,
+  getToken,
 } from "../api/api";
+import { useAuth } from "../context/AuthContext";
 
 import toast from "react-hot-toast";
 
@@ -20,6 +22,7 @@ const priorityRank = {
 };
 
 function Projects() {
+  const { user } = useAuth();
   const [tasks, setTasks] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -95,19 +98,21 @@ function Projects() {
   };
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect
+    // Reload tasks whenever user ID changes (e.g. login, switch user)
     loadTasks();
-  }, []);
+  }, [user?.id]);
 
   // Dual-Sync: Browser BroadcastChannel (0ms local cross-tab) + Server-Sent Events (SSE from backend)
   useEffect(() => {
+    const currentUserId = user?.id || (user?._id ? String(user._id) : null);
+    const channelName = currentUserId ? `tasks_realtime_sync_${currentUserId}` : "tasks_realtime_sync";
     const channel = typeof window !== "undefined" && "BroadcastChannel" in window
-      ? new BroadcastChannel("tasks_realtime_sync")
+      ? new BroadcastChannel(channelName)
       : null;
 
     const handleIncomingSync = (type, data) => {
       if (!data) return;
-      const incomingId = String(data._id || data.id || "");
+      const incomingId = typeof data === "string" ? data : String(data._id || data.id || "");
       if (!incomingId) return;
 
       if (type === "TASK_CREATED") {
@@ -136,7 +141,9 @@ function Projects() {
       };
     }
 
-    const eventSource = new EventSource(`${BASE_URL}/tasks/stream`);
+    const token = getToken();
+    const streamUrl = token ? `${BASE_URL}/tasks/stream?token=${encodeURIComponent(token)}` : `${BASE_URL}/tasks/stream`;
+    const eventSource = new EventSource(streamUrl);
 
     eventSource.onopen = () => {
       console.log("[SSE] Connected to real-time server stream");
@@ -162,7 +169,7 @@ function Projects() {
       if (channel) channel.close();
       eventSource.close();
     };
-  }, []);
+  }, [user?.id]);
 
   const summary = useMemo(() => {
     const total = tasks.length;
@@ -254,7 +261,7 @@ function Projects() {
       setAiNotice(null);
       toast.success("Task created successfully");
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        const bc = new BroadcastChannel("tasks_realtime_sync");
+        const bc = new BroadcastChannel(user?.id ? `tasks_realtime_sync_${user.id}` : "tasks_realtime_sync");
         bc.postMessage({ type: "TASK_CREATED", data: newTask });
         bc.close();
       }
@@ -305,7 +312,7 @@ function Projects() {
       setEditPriority("medium");
       toast.success("Task updated successfully");
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        const bc = new BroadcastChannel("tasks_realtime_sync");
+        const bc = new BroadcastChannel(user?.id ? `tasks_realtime_sync_${user.id}` : "tasks_realtime_sync");
         bc.postMessage({ type: "TASK_UPDATED", data: updatedTask });
         bc.close();
       }
@@ -342,7 +349,7 @@ function Projects() {
 
       toast.success("Task deleted successfully");
       if (typeof window !== "undefined" && "BroadcastChannel" in window) {
-        const bc = new BroadcastChannel("tasks_realtime_sync");
+        const bc = new BroadcastChannel(user?.id ? `tasks_realtime_sync_${user.id}` : "tasks_realtime_sync");
         bc.postMessage({ type: "TASK_DELETED", data: id });
         bc.close();
       }
@@ -377,6 +384,12 @@ function Projects() {
           ? "Task marked as completed"
           : "Task marked as pending"
       );
+
+      if (typeof window !== "undefined" && "BroadcastChannel" in window) {
+        const bc = new BroadcastChannel(user?.id ? `tasks_realtime_sync_${user.id}` : "tasks_realtime_sync");
+        bc.postMessage({ type: "TASK_UPDATED", data: updatedTask });
+        bc.close();
+      }
     } catch (err) {
       setError(err.message);
       toast.error(err.message);
@@ -530,7 +543,7 @@ function Projects() {
 
         <section className="panel list-panel">
           <div className="panel-header panel-header-wrap">
-            <h2>Task List</h2>
+            <h2>My Tasks ({user?.email || "Personal"})</h2>
           </div>
 
           <div className="toolbar">
