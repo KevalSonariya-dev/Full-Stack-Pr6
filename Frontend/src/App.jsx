@@ -9,6 +9,7 @@ import Spinner from "./components/Spinner";
 
 // Lazy-loaded route components
 const Home = lazy(() => import("./pages/Home"));
+const Portfolio = lazy(() => import("./pages/Portfolio"));
 const Projects = lazy(() => import("./pages/Projects"));
 const Contact = lazy(() => import("./pages/Contact"));
 const Login = lazy(() => import("./pages/Login"));
@@ -30,6 +31,7 @@ function App() {
           <Suspense fallback={<Spinner message="Loading page..." />}>
             <Routes>
               <Route path="/" element={<Home />} />
+              <Route path="/portfolio" element={<Portfolio />} />
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
