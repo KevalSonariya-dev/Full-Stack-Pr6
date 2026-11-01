@@ -6,6 +6,7 @@ import {
   updateTask,
   deleteTask,
   generateAiDescription,
+  BASE_URL,
 } from "../api/api";
 
 import toast from "react-hot-toast";
@@ -135,7 +136,7 @@ function Projects() {
       };
     }
 
-    const eventSource = new EventSource("http://localhost:5000/tasks/stream");
+    const eventSource = new EventSource(`${BASE_URL}/tasks/stream`);
 
     eventSource.onopen = () => {
       console.log("[SSE] Connected to real-time server stream");
